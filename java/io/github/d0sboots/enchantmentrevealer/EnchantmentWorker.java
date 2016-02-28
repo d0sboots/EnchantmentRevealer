@@ -114,12 +114,14 @@ public class EnchantmentWorker implements Runnable {
     private int[] candidates = new int[INITIAL_SIZE];
     private int candidatesLength = 0;
 
+    @SuppressWarnings("unchecked")
     final ArrayList<IntPair>[] enchantCounts = new ArrayList[3];
     {
         for (int i = 0; i < 3; ++i)
             enchantCounts[i] = new ArrayList<IntPair>();
     }
     private final Random rand = new Random(0);
+    @SuppressWarnings("unchecked")
     private final List<EnchantmentData>[] tempEnchantmentData = new ArrayList[3];
     private final ArrayList<Observation> observations = new ArrayList<Observation>();
 

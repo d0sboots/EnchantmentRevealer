@@ -42,11 +42,8 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
     private final InventoryPlayer inventory;
     private EnchantmentWorker.State lastState;
     private long scrollBaseMs = System.currentTimeMillis();
-    private final ArrayList<String>[] tooltipText;
-    {
-        ArrayList[] temp = {new ArrayList(), new ArrayList(), new ArrayList()};
-        tooltipText = temp;
-    };
+    @SuppressWarnings("unchecked")
+    private final ArrayList<String>[] tooltipText = new ArrayList[3];
 
     public GuiEnchantmentWrapper(
             InventoryPlayer inventory, World worldIn, EnchantmentWorker worker, BlockPos pos) {
@@ -58,6 +55,9 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
             containerField.set(this, containerWrapper);
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+        for (int i = 0; i < 3; ++i) {
+            tooltipText[i] = new ArrayList<String>();
         }
         this.worker = worker;
         this.inventory = inventory;

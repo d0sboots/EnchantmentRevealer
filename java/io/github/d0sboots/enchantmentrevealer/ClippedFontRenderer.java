@@ -119,7 +119,7 @@ public class ClippedFontRenderer extends FontRenderer {
         return totalWidth;
     }
 
-    private ResourceLocation getUnicodePageLocation(int page) {
+    private static ResourceLocation getUnicodePageLocation(int page) {
         // Note that unicodePageLocations aliases the static field in ResourceLocation, so this
         // makes use of (and updates) the main cache.
         ResourceLocation loc = unicodePageLocations[page];

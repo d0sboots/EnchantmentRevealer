@@ -82,6 +82,7 @@ public class FieldHelper<T, C> {
         this.field = field;
     }
 
+    @SuppressWarnings("unchecked")
     public T get(C target) {
         try {
             return (T) field.get(target);
