@@ -2,7 +2,7 @@
 A minecraft mod that reveals all enchantments in the enchantment GUI. It works even with vanilla Survival Multiplayer servers!
 
 ## How to get it
-Grab the latest JAR from https://github.com/d0sboots/EnchantmentRevealer/releases/latest (direct link: https://github.com/d0sboots/EnchantmentRevealer/releases/download/v1.0-1.8.9/EnchantmentRevealer-1.8.9-1.0.jar) and install it as per
+Grab the latest JAR from https://github.com/d0sboots/EnchantmentRevealer/releases/latest (direct link: https://github.com/d0sboots/EnchantmentRevealer/releases/download/v1.0-1.8.9-1722/EnchantmentRevealer-v1.0-1.8.9-1722.jar) and install it as per
 the instructions at http://www.minecraftmods.com/how-to-install-mods-for-minecraft-forge/. Note that this mod requires Minecraft Forge,
 it cannot be installed stand-alone.
 
