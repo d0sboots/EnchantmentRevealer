@@ -52,6 +52,14 @@ public class FieldHelper<T, C> {
         Field[] fields = target.getDeclaredFields();
         int index = getFieldOffset(fields, referenceField, target);
         Field found = fields[index + offset];
+        // We don't bother checking for primitive types, because we'd have to map it to the
+        // reference type and it's too annoying.
+        if (!found.getType().equals(fieldType) && !found.getType().isPrimitive()) {
+            throw new RuntimeException(
+                    "Bad offset of " + offset + " specified: Expected to find a field with type " +
+                    fieldType.getCanonicalName() + ", but instead found " +
+                    found.getType().getCanonicalName());
+        }
         found.setAccessible(true);
         return new FieldHelper<T, C>(found);
     }

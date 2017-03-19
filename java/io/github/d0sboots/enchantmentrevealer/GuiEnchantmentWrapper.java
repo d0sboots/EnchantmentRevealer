@@ -63,14 +63,6 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
         this.inventory = inventory;
     }
 
-    @Override
-    public void initGui() {
-        super.initGui();
-        if (clippedRenderer == null) {
-            clippedRenderer = new ClippedFontRenderer(mc.fontRendererObj);
-        }
-    }
-
     public static GuiEnchantmentWrapper wrap(
             GuiEnchantment base, EnchantmentWorker worker, BlockPos pos) {
 
@@ -87,6 +79,10 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
         mc.standardGalacticFontRenderer = dummyFontRenderer;
         super.drawGuiContainerBackgroundLayer(partialTicks, mouseX, mouseY);
         mc.standardGalacticFontRenderer = saved;
+
+        if (clippedRenderer == null) {
+            clippedRenderer = new ClippedFontRenderer(mc.fontRendererObj);
+        }
 
         int midX = (width - xSize) / 2;
         int midY = (height - ySize) / 2;

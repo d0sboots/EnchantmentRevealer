@@ -30,7 +30,7 @@ import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 public class EnchantmentRevealer
 {
     public static final String MODID = "EnchantmentRevealer";
-    public static final String VERSION = "1.0";
+    public static final String VERSION = "1.1";
     public static boolean verbose = false;
 
     // Replacement for System.out that doesn't do anything. This is replaced by System.out if verbose is true.

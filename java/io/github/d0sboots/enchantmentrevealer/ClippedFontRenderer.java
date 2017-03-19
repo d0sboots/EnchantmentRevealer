@@ -14,6 +14,8 @@
 
 package io.github.d0sboots.enchantmentrevealer;
 
+import java.lang.reflect.Field;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -29,7 +31,7 @@ import org.lwjgl.opengl.GL11;
  */
 public class ClippedFontRenderer extends FontRenderer {
     private static final FieldHelper<ResourceLocation, FontRenderer> textureField =
-            FieldHelper.from(ResourceLocation.class, FontRenderer.class);
+            FieldHelper.offsetFrom(ResourceLocation.class, FontRenderer.class, TextureManager.class, -1);
     private static final FieldHelper<TextureManager, FontRenderer> engineField =
             FieldHelper.from(TextureManager.class, FontRenderer.class);
     private static final ResourceLocation[] unicodePageLocations =
@@ -40,6 +42,8 @@ public class ClippedFontRenderer extends FontRenderer {
     public float clipMaxX = Float.MAX_VALUE;
     public float clipMinY = -1f;
     public float clipMaxY = Float.MAX_VALUE;
+    private final int[] intCharWidth;
+    private final float[] floatCharWidth;
 
     /**
      * The new renderer will clone the settings (such as font) of the base renderer, but does not
@@ -51,7 +55,29 @@ public class ClippedFontRenderer extends FontRenderer {
         super(Minecraft.getMinecraft().gameSettings, textureField.get(base),
                 engineField.get(base), base.getUnicodeFlag());
         setBidiFlag(base.getBidiFlag());
-        super.onResourceManagerReload(null);
+        super.onResourceManagerReload(Minecraft.getMinecraft().getResourceManager());
+
+        /* Optifine annoyingly redefines charWidth as a float[], which breaks binary compatibility.
+         * So we have to resort to reflection tricks. */
+        Field widthField = FontRenderer.class.getDeclaredFields()[1];
+        try {
+            widthField.setAccessible(true);
+            if (widthField.getType().getCanonicalName().equals("int[]")) {
+                floatCharWidth = null;
+                intCharWidth = (int[]) widthField.get(this);
+            } else if (widthField.getType().getCanonicalName().equals("float[]")) {
+                intCharWidth = null;
+                floatCharWidth = (float[]) widthField.get(this);
+            } else {
+                throw new RuntimeException(
+                        "Field " + widthField.getName() + " should by a float/int array, was " +
+                                widthField.getType().getCanonicalName());
+            }
+        } catch (IllegalArgumentException ex) {
+            throw new RuntimeException(ex);
+        } catch (IllegalAccessException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     /**
@@ -113,7 +139,7 @@ public class ClippedFontRenderer extends FontRenderer {
     @Override
     protected float renderDefaultChar(int ch, boolean italic)
     {
-        float totalWidth = charWidth[ch];
+        float totalWidth = floatCharWidth == null ? intCharWidth[ch] : floatCharWidth[ch];
         bindTexture(locationFontTexture);
         renderCommon(ch, 0, totalWidth, italic);
         return totalWidth;
