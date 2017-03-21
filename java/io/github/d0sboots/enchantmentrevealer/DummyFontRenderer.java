@@ -19,6 +19,8 @@ import java.io.InputStream;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.resources.IResource;
+import net.minecraft.client.resources.data.IMetadataSection;
 import net.minecraft.util.ResourceLocation;
 
 /**
@@ -27,6 +29,16 @@ import net.minecraft.util.ResourceLocation;
  * Only overrides what I need it to.
  */
 final class DummyFontRenderer extends FontRenderer {
+    private static final class DummyIResource implements IResource {
+        @Override public void close() { }
+        @Override public ResourceLocation getResourceLocation() { return null; }
+        @Override public InputStream getInputStream() { return new ByteArrayInputStream(new byte[0]); }
+        @Override public boolean hasMetadata() { return false; }
+        @Override public <T extends IMetadataSection> T getMetadata(String sectionName) { return null; }
+        @Override public String getResourcePackName() { return ""; }
+    }
+    private static final DummyIResource DUMMY_RESOURCE = new DummyIResource();
+
     DummyFontRenderer() {
         super(Minecraft.getMinecraft().gameSettings, null, null, false);
     }
@@ -35,8 +47,8 @@ final class DummyFontRenderer extends FontRenderer {
     protected void bindTexture(ResourceLocation location) {}
 
     @Override
-    protected InputStream getResourceInputStream(ResourceLocation location) {
-        return new ByteArrayInputStream(new byte[0]);
+    protected IResource getResource(ResourceLocation location) {
+        return DUMMY_RESOURCE;
     }
 
     @Override

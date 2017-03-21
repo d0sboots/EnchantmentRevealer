@@ -18,6 +18,7 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.annotation.Nullable;
 
@@ -42,6 +43,12 @@ public class Observation {
     /** The enchantment in each slot, encoded as an int. -1 means no enchantment. */
     public final int[] enchants = {-1, -1, -1};
     /**
+     * The level of each enchantment, not to be confused with the level for the slot.
+     * -1 means no enchantment. 0 is technically valid, but not really, since all enchants
+     * start at 1. (Protection I, Sharpness I, etc.)
+     */
+    public final int[] enchantLevels = {-1, -1, -1};
+    /**
      * The power level of the enchanting table at the time this observation was reported.
      * If this is RESET_POWER, then this is observation of a true enchanting result (the slot
      * was clicked), and certain fields have different meanings.
@@ -59,10 +66,6 @@ public class Observation {
      */
     public static final int RESET_POWER = -1;
 
-    public static String getEnchantName(int data) {
-        return Enchantment.getEnchantmentById(data & 0xFF).getTranslatedName(data >>> 8);
-    }
-
     public boolean hasEnchants() {
         return item != null && levels[0] != 0;
     }
@@ -71,6 +74,7 @@ public class Observation {
         truncatedSeed = other.truncatedSeed;
         System.arraycopy(other.levels, 0, levels, 0, 3);
         System.arraycopy(other.enchants, 0, enchants, 0, 3);
+        System.arraycopy(other.enchantLevels, 0, enchantLevels, 0, 3);
     }
 
     @Override
@@ -80,6 +84,7 @@ public class Observation {
         result = prime * result + Arrays.hashCode(enchants);
         result = prime * result + (item == null ? 0 : Item.getIdFromItem(item.getItem()));
         result = prime * result + Arrays.hashCode(levels);
+        result = prime * result + Arrays.hashCode(enchantLevels);
         result = prime * result + power;
         result = prime * result + truncatedSeed;
         return result;
@@ -96,6 +101,8 @@ public class Observation {
         Observation other = (Observation) obj;
         if (!Arrays.equals(enchants, other.enchants))
             return false;
+        if (!Arrays.equals(enchantLevels, other.enchantLevels))
+            return false;
         if (item == null)
             return other.item == null;
         if (other.item == null)
@@ -111,16 +118,20 @@ public class Observation {
         return true;
     }
 
-    private String formatTail(int[] enchantList) {
+    private String formatTail(int[] enchantList, int[] enchantLevels) {
         StringBuilder builder = new StringBuilder("[");
-        for (int entry : enchantList) {
+        for (int i = 0; i < enchantList.length; ++i) {
+            int entry = enchantList[i];
+            int level = enchantLevels[i];
             if (entry == -1) {
                 builder.append("-1, ");
             } else {
                 builder.append('"');
-                builder.append(getEnchantName(entry));
+                builder.append(Enchantment.getEnchantmentByID(entry).getTranslatedName(level));
                 builder.append("\" (0x");
                 builder.append(Integer.toHexString(entry));
+                builder.append(" ");
+                builder.append(level);
                 builder.append("), ");
             }
         }
@@ -137,18 +148,21 @@ public class Observation {
     @Override
     public String toString() {
         if (power == RESET_POWER) {
-            Map<Integer, Integer> enchantMap = EnchantmentHelper.getEnchantments(item);
+            Map<Enchantment, Integer> enchantMap = EnchantmentHelper.getEnchantments(item);
             int[] enchantList = new int[enchantMap.size()];
+            int[] enchantLevel = new int[enchantMap.size()];
             int i = 0;
-            for (Map.Entry<Integer, Integer> entry : enchantMap.entrySet()) {
-                enchantList[i++] = (entry.getValue() << 8) | entry.getKey();
+            for (Entry<Enchantment, Integer> entry : enchantMap.entrySet()) {
+                enchantList[i] = Enchantment.getEnchantmentID(entry.getKey());
+                enchantLevel[i] = entry.getValue();
+                i++;
             }
             return "EnchantObservation(chosenSlot: " + truncatedSeed
-                    + ", observedEnchants: " + formatTail(enchantList);
+                    + ", observedEnchants: " + formatTail(enchantList, enchantLevel);
         }
 
         return String.format(
                 "Observation(seed: 0x%04X, power: %d, enchants: %s",
-                truncatedSeed, power, formatTail(enchants));
+                truncatedSeed, power, formatTail(enchants, enchantLevels));
     }
 }

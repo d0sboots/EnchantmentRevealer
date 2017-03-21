@@ -24,7 +24,7 @@ import net.minecraft.inventory.ContainerEnchantment;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.BlockPos;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraftforge.common.ForgeHooks;
 
@@ -97,8 +97,9 @@ public class ContainerEnchantmentWrapper extends ContainerEnchantment {
         // Container.detectAndSendChanges(). This means matching up the enchanting item with the
         // data from the server is inherently racy. We combat this by paying attention to changes
         // in the data, with a fallback based on time.
-        if (id == 6) {
-            System.arraycopy(field_178151_h, 0, newSeedObservation.enchants, 0, 3);
+        if (id == 9) {
+            System.arraycopy(field_185001_h, 0, newSeedObservation.enchants, 0, 3);
+            System.arraycopy(field_185002_i, 0, newSeedObservation.enchantLevels, 0, 3);
             System.arraycopy(enchantLevels, 0, newSeedObservation.levels, 0, 3);
             newSeedObservation.truncatedSeed = (short) (xpSeed & -16);
 

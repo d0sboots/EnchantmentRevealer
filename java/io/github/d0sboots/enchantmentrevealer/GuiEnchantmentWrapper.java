@@ -22,8 +22,8 @@ import net.minecraft.client.gui.GuiEnchantment;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.ContainerEnchantment;
-import net.minecraft.util.BlockPos;
-import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
 
 public class GuiEnchantmentWrapper extends GuiEnchantment {
@@ -165,13 +165,13 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
             for (int j = 0; j < enchants.length; ++j) {
                 if (hidePercent) {
                     // Duplicate the highlighting of the normal GUI
-                    builder.append(EnumChatFormatting.WHITE);
-                    builder.append(EnumChatFormatting.ITALIC);
+                    builder.append(TextFormatting.WHITE);
+                    builder.append(TextFormatting.ITALIC);
                 } else {
-                    builder.append(EnumChatFormatting.YELLOW);
+                    builder.append(TextFormatting.YELLOW);
                 }
                 builder.append(enchants[j]);
-                builder.append(EnumChatFormatting.RESET);
+                builder.append(TextFormatting.RESET);
                 String styled = builder.toString();
                 String which = EnchantmentRevealer.verbose ? "verbose" : "normal";
                 if (hidePercent) {

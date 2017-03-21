@@ -16,9 +16,9 @@ package io.github.d0sboots.enchantmentrevealer;
 
 import net.minecraft.client.gui.GuiEnchantment;
 import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.util.BlockPos;
+import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.client.event.GuiOpenEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
@@ -28,25 +28,22 @@ public class Events {
 
     @SubscribeEvent
     public void onGui(GuiOpenEvent event) {
-        if (event.gui == null || !GuiEnchantment.class.equals(event.gui.getClass())) {
+        if (event.getGui() == null || !GuiEnchantment.class.equals(event.getGui().getClass())) {
             // Only hook the enchantment GUI. We don't use instanceof, because we *only* want to
             // hook the unmodified GUI.
             return;
         }
-        event.gui = GuiEnchantmentWrapper.wrap((GuiEnchantment) event.gui, worker, lastInteractPos);
+        event.setGui(GuiEnchantmentWrapper.wrap((GuiEnchantment) event.getGui(), worker, lastInteractPos));
     }
 
     @SubscribeEvent
-    public void onInteract(PlayerInteractEvent event) {
-        if (event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK) {
-            return;
-        }
-        lastInteractPos = event.pos;
+    public void onInteract(RightClickBlock event) {
+        lastInteractPos = event.getPos();
     }
 
     @SubscribeEvent
     public void onWorldLoad(WorldEvent.Load event) {
-        if (event.world instanceof WorldClient) {
+        if (event.getWorld() instanceof WorldClient) {
             worker = new EnchantmentWorker();
         }
     }

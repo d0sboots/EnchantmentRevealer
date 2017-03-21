@@ -29,14 +29,15 @@ import javax.annotation.concurrent.GuardedBy;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiNewChat;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentData;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.ChatComponentTranslation;
-import net.minecraft.util.ChatStyle;
-import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.text.Style;
+import net.minecraft.util.text.TextComponentString;
+import net.minecraft.util.text.TextComponentTranslation;
+import net.minecraft.util.text.TextFormatting;
 
 /**
  * This does all the heavy lifting for figuring out enchantments.
@@ -81,7 +82,7 @@ public class EnchantmentWorker implements Runnable {
         }
 
         public boolean isError() {
-            return statusMessage.startsWith(EnumChatFormatting.RED.toString());
+            return statusMessage.startsWith(TextFormatting.RED.toString());
         }
     }
 
@@ -115,10 +116,10 @@ public class EnchantmentWorker implements Runnable {
     private int candidatesLength = 0;
 
     @SuppressWarnings("unchecked")
-    final ArrayList<IntPair>[] enchantCounts = new ArrayList[3];
+    final ArrayList<EnchantCount>[] enchantCounts = new ArrayList[3];
     {
         for (int i = 0; i < 3; ++i)
-            enchantCounts[i] = new ArrayList<IntPair>();
+            enchantCounts[i] = new ArrayList<EnchantCount>();
     }
     private final Random rand = new Random(0);
     @SuppressWarnings("unchecked")
@@ -275,12 +276,15 @@ public class EnchantmentWorker implements Runnable {
             }
             List<EnchantmentData> list = buildEnchantmentList(seed, observation, i);
             tempEnchantmentData[i] = list;
-            if (list != null && !list.isEmpty()) {
+            if (!list.isEmpty()) {
                 EnchantmentData data = list.get(rand.nextInt(list.size()));
-                int enchant = data.enchantmentobj.effectId | (data.enchantmentLevel << 8);
-                if (observation.enchants[i] != enchant) {
+                if (Enchantment.getEnchantmentByID(observation.enchants[i]) != data.enchantmentobj ||
+                        observation.enchantLevels[i] != data.enchantmentLevel) {
                     return;
                 }
+            } else {
+                // Real enchant has something for this slot, but we found nothing.
+                return;
             }
         }
         addCandidate(seed);
@@ -288,14 +292,16 @@ public class EnchantmentWorker implements Runnable {
     }
 
     private List<EnchantmentData> buildEnchantmentList(int seed, Observation observation, int id) {
+        // Do not be deceived: There is a cast to long inside setSeed() in the code this is copied
+        // from, but it happens *after* the addition, meaning it does absolutely nothing.
         rand.setSeed(seed + id);
         ItemStack item = observation.item;
         if (item.getItem() == Items.enchanted_book) {
             item = new ItemStack(Items.book);
         }
         List<EnchantmentData> list = EnchantmentHelper.buildEnchantmentList(rand, item,
-                observation.levels[id]);
-        if (item.getItem() == Items.book && list != null && list.size() > 1) {
+                observation.levels[id], false);
+        if (item.getItem() == Items.book && list.size() > 1) {
             list.remove(rand.nextInt(list.size()));
         }
         return list;
@@ -331,12 +337,12 @@ public class EnchantmentWorker implements Runnable {
         if (candidatesLength != 1)
             return true;
         int id = observation.truncatedSeed;
-        Map<Integer, Integer> enchants = EnchantmentHelper.getEnchantments(observation.item);
+        Map<Enchantment, Integer> enchants = EnchantmentHelper.getEnchantments(observation.item);
         List<EnchantmentData> list = buildEnchantmentList(candidates[0], observation, id);
         if (enchants.size() != list.size())
             return false;
         for (EnchantmentData data : list) {
-            if (enchants.get(data.enchantmentobj.effectId) != data.enchantmentLevel)
+            if (enchants.get(data.enchantmentobj) != data.enchantmentLevel)
                 return false;
         }
         return true;
@@ -346,21 +352,22 @@ public class EnchantmentWorker implements Runnable {
         String[][] enchants = new String[3][];
         int[][] counts = new int[3][];
         for (int i = 0; i < 3; ++i) {
-            final int target = observation.enchants[i];
-            final ArrayList<IntPair> list = enchantCounts[i];
+            final EnchantmentData target = new EnchantmentData(
+                    Enchantment.getEnchantmentByID(observation.enchants[i]), observation.enchantLevels[i]);
+            final ArrayList<EnchantCount> list = enchantCounts[i];
             Collections.sort(list);
             Collections.reverse(list);
 
             // Move the observed enchant to the top
             if (!list.isEmpty()) {
                 int j;
-                for (j = 0; j < list.size() && list.get(j).second != target; ++j)
+                for (j = 0; j < list.size() && !EnchantCount.equals(list.get(j).enchant, target); ++j)
                     ;
                 if (j == list.size()) {
                     throw new RuntimeException("Failed to find " + target + " for " + i
                             + " in list " + Arrays.toString(list.toArray()));
                 }
-                IntPair targetPair = list.get(j);
+                EnchantCount targetPair = list.get(j);
                 for (; j > 0; --j) {
                     list.set(j, list.get(j - 1));
                 }
@@ -370,9 +377,9 @@ public class EnchantmentWorker implements Runnable {
             String[] enchantTarget = new String[list.size()];
             int[] countTarget = new int[list.size()];
             for (int j = 0; j < list.size(); ++j) {
-                IntPair item = list.get(j);
-                enchantTarget[j] = Observation.getEnchantName(item.second);
-                countTarget[j] = item.first;
+                EnchantCount item = list.get(j);
+                enchantTarget[j] = item.enchant.enchantmentobj.getTranslatedName(item.enchant.enchantmentLevel);
+                countTarget[j] = item.count;
             }
             enchants[i] = enchantTarget;
             counts[i] = countTarget;
@@ -406,19 +413,19 @@ public class EnchantmentWorker implements Runnable {
     }
 
     private synchronized void dumpError(String tag) {
-        state = new State(EnumChatFormatting.RED
+        state = new State(TextFormatting.RED
                 + I18n.format("enchantmentrevealer.error.mainmessage"), NO_STRINGS, NO_INTS,
                 observations.get(observations.size() - 1));
         GuiNewChat chat = Minecraft.getMinecraft().ingameGUI.getChatGUI();
-        chat.printChatMessage(new ChatComponentTranslation("enchantmentrevealer.error.part1",
-                new ChatComponentTranslation("enchantmentrevealer.error." + tag), "d0sboots",
-                "gmai", "l.com").setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED)
+        chat.printChatMessage(new TextComponentTranslation("enchantmentrevealer.error.part1",
+                new TextComponentTranslation("enchantmentrevealer.error." + tag), "d0sboots",
+                "gmai", "l.com").setChatStyle(new Style().setColor(TextFormatting.RED)
                 .setBold(true)));
-        chat.printChatMessage(new ChatComponentTranslation("enchantmentrevealer.error.part2")
-                .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW)));
+        chat.printChatMessage(new TextComponentTranslation("enchantmentrevealer.error.part2")
+                .setChatStyle(new Style().setColor(TextFormatting.YELLOW)));
         for (Observation observation : observations) {
-            chat.printChatMessage(new ChatComponentText(observation.toString())
-                    .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.YELLOW)));
+            chat.printChatMessage(new TextComponentString(observation.toString())
+                    .setChatStyle(new Style().setColor(TextFormatting.YELLOW)));
         }
         observations.clear();
         candidatesLength = 0;
@@ -428,22 +435,21 @@ public class EnchantmentWorker implements Runnable {
 
     private void tallyEnchants() {
         for (int i = 0; i < 3; ++i) {
-            ArrayList<IntPair> list = enchantCounts[i];
+            ArrayList<EnchantCount> list = enchantCounts[i];
             List<EnchantmentData> enchantData = tempEnchantmentData[i];
             if (enchantData == null) {
                 continue;
             }
             outer: for (EnchantmentData data : enchantData) {
-                int target = data.enchantmentobj.effectId | (data.enchantmentLevel << 8);
                 final int size = list.size();
                 for (int j = 0; j < size; ++j) {
-                    IntPair pair = list.get(j);
-                    if (pair.second == target) {
-                        pair.first++;
+                    EnchantCount pair = list.get(j);
+                    if (EnchantCount.equals(pair.enchant, data)) {
+                        pair.count++;
                         continue outer;
                     }
                 }
-                list.add(new IntPair(1, target));
+                list.add(new EnchantCount(1, data));
             }
         }
     }

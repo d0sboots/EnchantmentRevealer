@@ -21,7 +21,8 @@ import net.minecraft.command.NumberInvalidException;
 import net.minecraft.command.PlayerNotFoundException;
 import net.minecraft.command.WrongUsageException;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
+import net.minecraft.entity.player.PlayerCapabilities;
+import net.minecraft.server.MinecraftServer;
 
 /**
  * Optional command that allows setting and getting any player's XP seed.
@@ -37,7 +38,7 @@ public class CommandXpSeed extends CommandBase
     // 0x0249e08e, power=0, item=Golden Sword: Missing middle slot
 
     private static final FieldHelper<Integer, EntityPlayer> xpField =
-            FieldHelper.offsetFrom(Integer.class, EntityPlayer.class, ItemStack.class, -1);
+            FieldHelper.offsetFrom(Integer.class, EntityPlayer.class, PlayerCapabilities.class, 4);
     /**
      * Gets the name of the command
      */
@@ -74,7 +75,7 @@ public class CommandXpSeed extends CommandBase
      * @param args The arguments that were passed
      */
     @Override
-    public void processCommand(ICommandSender sender, String[] args) throws CommandException
+    public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException
     {
         final EntityPlayer player;
         final boolean isQuery;
@@ -85,10 +86,10 @@ public class CommandXpSeed extends CommandBase
         } else if (args.length > 2) {
             throw new WrongUsageException("commands.xpseed.usage");
         } else if (args.length == 2) {
-            player = getPlayer(sender, args[0]);
+            player = getPlayer(server, sender, args[0]);
             int value;
             try {
-                value = Integer.decode(args[1]);
+                value = (int) (long) Long.decode(args[1]);
             } catch (NumberFormatException unused) {
                 throw new NumberInvalidException("commands.generic.num.invalid", args[1]);
             }
@@ -98,12 +99,12 @@ public class CommandXpSeed extends CommandBase
             EntityPlayer localPlayer = null;
             boolean localQuery;
             try {
-                localPlayer = getPlayer(sender, args[0]);
+                localPlayer = getPlayer(server, sender, args[0]);
                 localQuery = true;
             } catch (PlayerNotFoundException e) {
                 int value;
                 try {
-                    value = Integer.decode(args[0]);
+                    value = (int) (long) Long.decode(args[0]);
                 } catch (NumberFormatException unused) {
                     throw new CommandException("commands.xpseed.failure", args[0]);
                 }
