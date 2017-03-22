@@ -43,7 +43,7 @@ public class CommandXpSeed extends CommandBase
      * Gets the name of the command
      */
     @Override
-    public String getCommandName()
+    public String getName()
     {
         return "xpseed";
     }
@@ -63,7 +63,7 @@ public class CommandXpSeed extends CommandBase
      * @param sender The command sender that executed the command
      */
     @Override
-    public String getCommandUsage(ICommandSender sender)
+    public String getUsage(ICommandSender sender)
     {
         return "commands.xpseed.usage";
     }
