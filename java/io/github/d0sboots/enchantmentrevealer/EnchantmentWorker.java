@@ -296,12 +296,12 @@ public class EnchantmentWorker implements Runnable {
         // from, but it happens *after* the addition, meaning it does absolutely nothing.
         rand.setSeed(seed + id);
         ItemStack item = observation.item;
-        if (item.getItem() == Items.enchanted_book) {
-            item = new ItemStack(Items.book);
+        if (item.getItem() == Items.ENCHANTED_BOOK) {
+            item = new ItemStack(Items.BOOK);
         }
         List<EnchantmentData> list = EnchantmentHelper.buildEnchantmentList(rand, item,
                 observation.levels[id], false);
-        if (item.getItem() == Items.book && list.size() > 1) {
+        if (item.getItem() == Items.BOOK && list.size() > 1) {
             list.remove(rand.nextInt(list.size()));
         }
         return list;
@@ -419,13 +419,13 @@ public class EnchantmentWorker implements Runnable {
         GuiNewChat chat = Minecraft.getMinecraft().ingameGUI.getChatGUI();
         chat.printChatMessage(new TextComponentTranslation("enchantmentrevealer.error.part1",
                 new TextComponentTranslation("enchantmentrevealer.error." + tag), "d0sboots",
-                "gmai", "l.com").setChatStyle(new Style().setColor(TextFormatting.RED)
+                "gmai", "l.com").setStyle(new Style().setColor(TextFormatting.RED)
                 .setBold(true)));
         chat.printChatMessage(new TextComponentTranslation("enchantmentrevealer.error.part2")
-                .setChatStyle(new Style().setColor(TextFormatting.YELLOW)));
+                .setStyle(new Style().setColor(TextFormatting.YELLOW)));
         for (Observation observation : observations) {
             chat.printChatMessage(new TextComponentString(observation.toString())
-                    .setChatStyle(new Style().setColor(TextFormatting.YELLOW)));
+                    .setStyle(new Style().setColor(TextFormatting.YELLOW)));
         }
         observations.clear();
         candidatesLength = 0;

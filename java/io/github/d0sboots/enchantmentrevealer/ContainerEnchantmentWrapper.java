@@ -98,8 +98,8 @@ public class ContainerEnchantmentWrapper extends ContainerEnchantment {
         // data from the server is inherently racy. We combat this by paying attention to changes
         // in the data, with a fallback based on time.
         if (id == 9) {
-            System.arraycopy(field_185001_h, 0, newSeedObservation.enchants, 0, 3);
-            System.arraycopy(field_185002_i, 0, newSeedObservation.enchantLevels, 0, 3);
+            System.arraycopy(enchantClue, 0, newSeedObservation.enchants, 0, 3);
+            System.arraycopy(worldClue, 0, newSeedObservation.enchantLevels, 0, 3);
             System.arraycopy(enchantLevels, 0, newSeedObservation.levels, 0, 3);
             newSeedObservation.truncatedSeed = (short) (xpSeed & -16);
 

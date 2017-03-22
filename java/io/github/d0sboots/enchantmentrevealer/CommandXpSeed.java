@@ -115,7 +115,7 @@ public class CommandXpSeed extends CommandBase
             player = localPlayer;
             isQuery = localQuery;
         }
-        notifyOperators(sender, this, isQuery ? "commands.xpseed.query" : "commands.xpseed.set",
+        notifyCommandListener(sender, this, isQuery ? "commands.xpseed.query" : "commands.xpseed.set",
                 player.getName(), String.format("0x%08X", player.getXPSeed()));
     }
 }
