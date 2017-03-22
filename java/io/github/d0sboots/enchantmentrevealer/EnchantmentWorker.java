@@ -87,7 +87,7 @@ public class EnchantmentWorker implements Runnable {
     }
 
     public static final String DEFAULT_STATUS = I18n.format("enchantmentrevealer.version",
-            EnchantmentRevealer.MODID, EnchantmentRevealer.VERSION);
+            EnchantmentRevealer.VERSION);
     // Default size of the psuedo-ArrayList "candidates".
     private static final int INITIAL_SIZE = 128;
     // The number of seeds to work in a batch, before reporting progress to the UI

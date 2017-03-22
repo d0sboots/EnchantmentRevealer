@@ -14,6 +14,7 @@
 
 package io.github.d0sboots.enchantmentrevealer;
 
+import java.io.File;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
@@ -29,7 +30,8 @@ import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
         canBeDeactivated=true, clientSideOnly=true)
 public class EnchantmentRevealer
 {
-    public static final String MODID = "EnchantmentRevealer";
+    public static final String MODID = "enchantment_revealer";
+    public static final String NAME = "EnchantmentRevealer";
     public static final String VERSION = "1.1";
     public static boolean verbose = false;
 
@@ -46,7 +48,7 @@ public class EnchantmentRevealer
     @EventHandler
     public void init(FMLPreInitializationEvent event)
     {
-        Configuration config = new Configuration(event.getSuggestedConfigurationFile());
+        Configuration config = new Configuration(new File(event.getModConfigurationDirectory(), NAME + ".cfg"));
         config.load();
 
         Property prop = config.get(Configuration.CATEGORY_CLIENT, "verboseDebug", false,

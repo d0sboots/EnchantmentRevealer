@@ -18,4 +18,4 @@ enchantmentrevealer.tooltip.normal=%s
 enchantmentrevealer.tooltip.verbose=%s (%d)
 enchantmentrevealer.tooltip.percent.normal=%s %s%%
 enchantmentrevealer.tooltip.percent.verbose=%s %s%% (%d)
-enchantmentrevealer.version=%s v%s
+enchantmentrevealer.version=EnchantmentRevealer v%s

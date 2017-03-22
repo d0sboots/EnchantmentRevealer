@@ -16,12 +16,10 @@ package io.github.d0sboots.enchantmentrevealer;
 
 import java.util.ArrayDeque;
 
-import javax.annotation.Nullable;
-
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.ContainerEnchantment;
-import net.minecraft.inventory.Slot;
+import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
@@ -51,15 +49,6 @@ public class ContainerEnchantmentWrapper extends ContainerEnchantment {
     }
 
     @Override
-    protected Slot addSlotToContainer(Slot slot) {
-        // This happens only when called inside the super constructor
-        if (slot.inventory == tableInventory && slot.getSlotIndex() == 0) {
-            slot = new SlotWrapper(slot, this);
-        }
-        return super.addSlotToContainer(slot);
-    }
-
-    @Override
     public boolean enchantItem(EntityPlayer playerIn, int id) {
         boolean val = super.enchantItem(playerIn, id);
         if (val) {
@@ -72,12 +61,17 @@ public class ContainerEnchantmentWrapper extends ContainerEnchantment {
         return val;
     }
 
-
-    public void onSlotChanged(@Nullable ItemStack stack) {
+    @Override
+    public void onCraftMatrixChanged(IInventory inventoryIn) {
+        super.onCraftMatrixChanged(inventoryIn);
+        if (inventoryIn != tableInventory) {
+            return;
+        }
+        ItemStack stack = inventoryIn.getStackInSlot(0);
         if (ItemStack.areItemStacksEqual(stack, lastStack)) {
             return;
         }
-        EnchantmentRevealer.out.println("onSlotChanged " + stack);
+        EnchantmentRevealer.out.println("onCraftMatrixChanged " + stack);
         lastStack = stack == null ? null : stack.copy();
         if (lastStack != null && lastStack.hasEffect()) {
             worker.reportEnchantFinished(lastStack);
