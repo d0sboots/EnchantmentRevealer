@@ -25,6 +25,11 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 public class Events {
     private EnchantmentWorker worker;
     private BlockPos lastInteractPos;
+    private final String useSeedHint;
+
+    public Events(String useSeedHint) {
+        this.useSeedHint = useSeedHint;
+    }
 
     @SubscribeEvent
     public void onGui(GuiOpenEvent event) {
@@ -44,7 +49,7 @@ public class Events {
     @SubscribeEvent
     public void onWorldLoad(WorldEvent.Load event) {
         if (event.getWorld() instanceof WorldClient) {
-            worker = new EnchantmentWorker();
+            worker = new EnchantmentWorker(useSeedHint);
         }
     }
 }

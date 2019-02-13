@@ -91,9 +91,9 @@ public class EnchantmentWorker implements Runnable {
     // Default size of the psuedo-ArrayList "candidates".
     private static final int INITIAL_SIZE = 128;
     // The number of seeds to work in a batch, before reporting progress to the UI
-    private static final int BATCH_SIZE = 512;
+    private static final int BATCH_SIZE = 1024;
     // No strings, my friend, no strings!
-    private static final String[][] NO_STRINGS = { new String[0], new String[0], new String[0] };
+    public static final String[][] NO_STRINGS = { new String[0], new String[0], new String[0] };
     private static final int[][] NO_INTS = { new int[0], new int[0], new int[0] };
     private static final State DEFAULT_STATE = new State(DEFAULT_STATUS, NO_STRINGS, NO_INTS, null);
 
@@ -102,7 +102,7 @@ public class EnchantmentWorker implements Runnable {
     @GuardedBy("this")
     private final Deque<Observation> queue = new ArrayDeque<Observation>();
     @GuardedBy("this")
-    private Thread thread = null;
+    Thread thread = null; // Visible for testing
     @GuardedBy("this")
     private Observation pendingEnchant;
 
@@ -125,6 +125,13 @@ public class EnchantmentWorker implements Runnable {
     @SuppressWarnings("unchecked")
     private final List<EnchantmentData>[] tempEnchantmentData = new ArrayList[3];
     private final ArrayList<Observation> observations = new ArrayList<Observation>();
+    private final String useSeedHint;
+    // Are we re-doing the calculations assuming bad seed data?
+    private boolean didFallback = false;
+
+    public EnchantmentWorker(String useSeedHint) {
+        this.useSeedHint = useSeedHint;
+    }
 
     @Override
     public void run() {
@@ -150,45 +157,55 @@ public class EnchantmentWorker implements Runnable {
 
             Observation observation = observations.get(observations.size() - 1);
             EnchantmentRevealer.out.println("Working observation " + observation);
-            if (observation.hasEnchants()) {
-                for (int i = 0; i < 3; ++i) {
-                    enchantCounts[i].clear();
+            if (!observation.hasEnchants()) {
+                // Keep the message around, but update the observation
+                state = new State(state.statusMessage, NO_STRINGS, NO_INTS, observation);
+                continue;
+            }
+            for (int i = 0; i < 3; ++i) {
+                enchantCounts[i].clear();
+            }
+            Observation prevObservation = null;
+            for (int i = observations.size() - 2; i >= 0; --i) {
+                Observation o = observations.get(i);
+                if (o.hasEnchants()) {
+                    prevObservation = o;
+                    break;
                 }
-                Observation prevObservation = null;
-                for (int i = observations.size() - 2; i >= 0; --i) {
-                    Observation o = observations.get(i);
-                    if (o.hasEnchants()) {
-                        prevObservation = o;
-                        break;
-                    }
-                }
-                if (prevObservation != null
-                        && prevObservation.truncatedSeed != observation.truncatedSeed) {
-                    if (prevObservation.power != observation.power) {
-                        refineWithNewPower(observation);
-                    } else {
-                        dumpError("seedmismatch");
-                        // Put the observation back so it is processed next time
-                        observations.add(observation);
-                        return;
-                    }
+            }
+            if (prevObservation != null && prevObservation.truncatedSeed != observation.truncatedSeed) {
+                dumpError("seedmismatch");
+                // Put the observation back so it is processed next time
+                observations.add(observation);
+                return;
+            }
+            if (candidatesLength == 0) {
+                if (didFallback || useSeedHint.equalsIgnoreCase("never")) {
+                    doInitialFull(observation);
                 } else {
-                    if (candidatesLength == 0) {
-                        doInitial(observation);
-                    } else {
-                        refine(observation);
-                    }
+                    doInitial(observation);
                 }
-                if (candidatesLength == 0) {
+            } else {
+                refine(observation);
+            }
+
+            if (candidatesLength == 0) {
+                if (didFallback || useSeedHint.equalsIgnoreCase("always")) {
                     dumpError("exhausted");
                     // Put the observation back so it is processed next time
                     observations.add(observation);
                     return;
                 }
-            } else {
-                // Keep the message around, but update the observation
-                state = new State(state.statusMessage, NO_STRINGS, NO_INTS, observation);
-                continue;
+
+                didFallback = true;
+                // Put all the observations back on the queue, so we re-process them.
+                synchronized (this) {
+                    for (int i = observations.size() - 1; i >= 0; --i) {
+                        queue.addFirst(observations.get(i));
+                    }
+                }
+                observations.clear();
+                continue; // Immediately start re-processing
             }
             state = generateRestingState(observation);
         }
@@ -201,56 +218,134 @@ public class EnchantmentWorker implements Runnable {
             // Worker will handle it.
             return;
         }
-        if (observation.hasEnchants() && (candidatesLength == 0 || candidatesLength > 100)) {
-            thread = new Thread(this, "EnchantmentWorker");
-            thread.setDaemon(true);
-            thread.setPriority(Thread.MIN_PRIORITY);
-            thread.start();
-        } else {
-            mainLoop();
-        }
+        thread = new Thread(this, "EnchantmentWorker");
+        thread.setDaemon(true);
+        thread.setPriority(Thread.MIN_PRIORITY);
+        thread.start();
+    }
+
+    private void setPartialProgress(Observation observation, long percent) {
+        state = new State(I18n.format("enchantmentrevealer.calculating.percent", percent),
+                NO_STRINGS, NO_INTS, observation);
     }
 
     private void doInitial(Observation observation) {
-        int initial = observation.truncatedSeed & 0xFFFF;
+        int initial = observation.truncatedSeed & 0xFFF0;
         int i = initial;
         do {
-            state = new State(I18n.format("enchantmentrevealer.calculating.percent",
-                    (((i & 0xFFFF0000L) * 100L + (1L << 31)) >>> 32)), NO_STRINGS, NO_INTS,
-                    observation);
+            setPartialProgress(observation, Math.round((i & 0xFFFFFFFFL) * 0x64P-32));  // 100/2^32
             int localLimit = i + (BATCH_SIZE << 12);
 
             for (; i != localLimit; i += (1 << 16)) {
                 for (int j = 0; j < 16; ++j) {
                     int merged = i | j;
-                    if (testLevels(merged, observation)) {
-                        testEnchantsAndAdd(merged, observation);
+                    if (testLevels(rand, merged, observation)
+                            && testEnchants(rand, merged, observation, tempEnchantmentData)) {
+                        addAndTallyEnchants(merged, tempEnchantmentData);
                     }
                 }
             }
         } while (i != initial);
     }
 
-    private void refine(Observation observation) {
-        int limit = candidatesLength;
-        candidatesLength = 0;
-        for (int i = 0; i < limit; ++i) {
-            testEnchantsAndAdd(candidates[i], observation);
-        }
-    }
+    /** Scan the entire space */
+    private void doInitialFull(final Observation observation) {
+        final int THREAD_POOL_SIZE = 4;
+        Thread[] threads = new Thread[THREAD_POOL_SIZE];
+        final int batch[] = new int[1];  // Loop counter passed as one-element array
 
-    private void refineWithNewPower(Observation observation) {
-        int limit = candidatesLength;
-        candidatesLength = 0;
-        for (int i = 0; i < limit; ++i) {
-            int test = candidates[i];
-            if (testLevels(test, observation)) {
-                testEnchantsAndAdd(test, observation);
+        for (int j = 0; j < THREAD_POOL_SIZE; ++j) {
+            threads[j] = new Thread("EnchantmentWorker-doInitialFull-" + j) {
+                @Override public void run() {
+                    class Observed {
+                        public int seed;
+                        @SuppressWarnings("unchecked")
+                        public List<EnchantmentData>[] tempData = new List[3];
+                        {
+                            for (int i = 0; i < 3; ++i) {
+                                tempData[i] = new ArrayList<EnchantmentData>();
+                            }
+                        }
+                    };
+
+                    // We never shrink seen, so that it holds on to all the Observed instances.
+                    // So we track seenLength separately, and length() becomes capacity.
+                    // This is so that we can re-use all the objects involved without re-allocating
+                    // or re-initializing them.
+                    List<Observed> seen = new ArrayList<Observed>();
+                    Random rng = new Random(0);
+                    seen.add(new Observed());
+                    int seenLength = 0;
+                    do {
+                        int i;
+                        int localLimit;
+                        synchronized (batch) {
+                            // We've been saving work thread-locally, now deal with it.
+                            for (int j = 0; j < seenLength; ++j) {
+                                Observed o = seen.get(j);
+                                addAndTallyEnchants(o.seed, o.tempData);
+                            }
+                            seenLength = 0;
+                            i = batch[0];
+                            if (i == 1) { // Sentinel value
+                                return;
+                            }
+                            // Higher batch size, because of the larger space.
+                            localLimit = i + (BATCH_SIZE << 4);
+                            batch[0] = localLimit;
+                            if (localLimit == 0) {
+                                batch[0] = 1;
+                            }
+                            setPartialProgress(observation, Math.round((i & 0xFFFFFFFFL) * 0x64P-32));  // 100/2^32
+                        }
+
+                        // The inner loop: Everything else can be slow, but this must be fast.
+                        for (; i != localLimit; i++) {
+                            if (testLevelsFast(rng, i, observation)
+                                    && testEnchants(rng, i, observation, seen.get(seenLength).tempData)) {
+                                seen.get(seenLength).seed = i;
+                                seenLength++;
+                                if (seenLength >= seen.size()) {
+                                    seen.add(new Observed());
+                                }
+                            }
+                        }
+                    } while (true);
+                }
+            };
+            threads[j].setDaemon(true);
+            threads[j].setPriority(Thread.MIN_PRIORITY);
+            threads[j].start();
+        }
+        for (int j = 0; j < THREAD_POOL_SIZE; ++j) {
+            try {
+                threads[j].join();
+            } catch (InterruptedException ex) {
+                j--;
             }
         }
     }
 
-    private boolean testLevels(int seed, Observation observation) {
+    private void refine(Observation observation) {
+        int limit = candidatesLength;
+        candidatesLength = 0;
+        int i = 0;
+        final double dRatio = 100.0 / limit;
+        while (i < limit) {
+            setPartialProgress(observation, Math.round(i * dRatio));
+            int localLimit = i + BATCH_SIZE;
+            if (localLimit > limit) {
+                localLimit = limit;
+            }
+            for (; i != localLimit; i++) {
+                if (testEnchants(rand, candidates[i], observation, tempEnchantmentData)) {
+                    addAndTallyEnchants(candidates[i], tempEnchantmentData);
+                }
+            }
+        }
+    }
+
+    static boolean testLevels(Random rand, int seed, Observation observation) {
         rand.setSeed(seed);
 
         for (int i = 0; i < 3; ++i) {
@@ -266,7 +361,47 @@ public class EnchantmentWorker implements Runnable {
         return true;
     }
 
-    private void testEnchantsAndAdd(int seed, Observation observation) {
+    // This should always return the same result as testLevels(). We keep both around, because
+    // testLevels() is less likely to break, and isn't that much slower. It's suitable for use
+    // in everything except doInitialFull().
+    static boolean testLevelsFast(Random rand, int seed, Observation observation) {
+        int[] levels = observation.levels;
+        int power = observation.power;
+        if (power > 15) {
+            power = 15;
+        }
+        int p1 = 1 + (power >> 1);
+        int p2 = power + 1;
+        rand.setSeed(seed);
+        int j = rand.nextInt(8) + p1 + rand.nextInt(p2);
+        int level = j / 3;
+        if (level < 1) {
+            level = 1;
+        }
+        if (level != levels[0]) {
+            return false;
+        }
+        j = rand.nextInt(8) + p1 + rand.nextInt(p2);
+        level = j * 2 / 3 + 1;
+        if (level < 2) {
+            level = 0;
+        }
+        if (level != levels[1]) {
+            return false;
+        }
+        j = rand.nextInt(8) + p1 + rand.nextInt(p2);
+        level = power * 2;
+        if (level < j) {
+            level = j;
+        }
+        if (level < 3) {
+            level = 0;
+        }
+        return level == levels[2];
+    }
+
+    private static boolean testEnchants(Random rand, int seed, Observation observation,
+            List<EnchantmentData>[] tempEnchantmentData) {
         for (int i = 0; i < 3; ++i) {
             int level = observation.levels[i];
 
@@ -274,24 +409,24 @@ public class EnchantmentWorker implements Runnable {
                 tempEnchantmentData[i] = null;
                 continue;
             }
-            List<EnchantmentData> list = buildEnchantmentList(seed, observation, i);
+            List<EnchantmentData> list = buildEnchantmentList(rand, seed, observation, i);
             tempEnchantmentData[i] = list;
             if (!list.isEmpty()) {
                 EnchantmentData data = list.get(rand.nextInt(list.size()));
                 if (Enchantment.getEnchantmentByID(observation.enchants[i]) != data.enchantmentobj ||
                         observation.enchantLevels[i] != data.enchantmentLevel) {
-                    return;
+                    return false;
                 }
             } else {
                 // Real enchant has something for this slot, but we found nothing.
-                return;
+                return false;
             }
         }
-        addCandidate(seed);
-        tallyEnchants();
+        return true;
     }
 
-    private List<EnchantmentData> buildEnchantmentList(int seed, Observation observation, int id) {
+    private static List<EnchantmentData> buildEnchantmentList(
+            Random rand, int seed, Observation observation, int id) {
         // Do not be deceived: There is a cast to long inside setSeed() in the code this is copied
         // from, but it happens *after* the addition, meaning it does absolutely nothing.
         rand.setSeed(seed + id);
@@ -326,6 +461,7 @@ public class EnchantmentWorker implements Runnable {
                 observations.clear();
                 candidatesLength = 0;
                 state = DEFAULT_STATE;
+                didFallback = false;
                 continue;
             }
             observations.add(observation);
@@ -338,7 +474,7 @@ public class EnchantmentWorker implements Runnable {
             return true;
         int id = observation.truncatedSeed;
         Map<Enchantment, Integer> enchants = EnchantmentHelper.getEnchantments(observation.item);
-        List<EnchantmentData> list = buildEnchantmentList(candidates[0], observation, id);
+        List<EnchantmentData> list = buildEnchantmentList(rand, candidates[0], observation, id);
         if (enchants.size() != list.size())
             return false;
         for (EnchantmentData data : list) {
@@ -352,14 +488,14 @@ public class EnchantmentWorker implements Runnable {
         String[][] enchants = new String[3][];
         int[][] counts = new int[3][];
         for (int i = 0; i < 3; ++i) {
-            final EnchantmentData target = new EnchantmentData(
-                    Enchantment.getEnchantmentByID(observation.enchants[i]), observation.enchantLevels[i]);
             final ArrayList<EnchantCount> list = enchantCounts[i];
             Collections.sort(list);
             Collections.reverse(list);
 
             // Move the observed enchant to the top
             if (!list.isEmpty()) {
+                final EnchantmentData target = new EnchantmentData(
+                        Enchantment.getEnchantmentByID(observation.enchants[i]), observation.enchantLevels[i]);
                 int j;
                 for (j = 0; j < list.size() && !EnchantCount.equals(list.get(j).enchant, target); ++j)
                     ;
@@ -398,13 +534,6 @@ public class EnchantmentWorker implements Runnable {
         return new State(message, enchants, counts, observation);
     }
 
-    private void addCandidate(int v) {
-        if (candidatesLength >= candidates.length) {
-            candidates = Arrays.copyOf(candidates, candidates.length << 1);
-        }
-        candidates[candidatesLength++] = v;
-    }
-
     private void shrink() {
         int newSize = Math.max(candidatesLength, INITIAL_SIZE);
         if (newSize != candidates.length) {
@@ -430,13 +559,19 @@ public class EnchantmentWorker implements Runnable {
         observations.clear();
         candidatesLength = 0;
         thread = null;
+        didFallback = false;
         shrink();
     }
 
-    private void tallyEnchants() {
+    private void addAndTallyEnchants(int v, List<EnchantmentData>[] tempEnchantData) {
+        if (candidatesLength >= candidates.length) {
+            candidates = Arrays.copyOf(candidates, candidates.length << 1);
+        }
+        candidates[candidatesLength++] = v;
+
         for (int i = 0; i < 3; ++i) {
             ArrayList<EnchantCount> list = enchantCounts[i];
-            List<EnchantmentData> enchantData = tempEnchantmentData[i];
+            List<EnchantmentData> enchantData = tempEnchantData[i];
             if (enchantData == null) {
                 continue;
             }

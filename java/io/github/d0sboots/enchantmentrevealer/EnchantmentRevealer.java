@@ -32,7 +32,7 @@ public class EnchantmentRevealer
 {
     public static final String MODID = "enchantment_revealer";
     public static final String NAME = "EnchantmentRevealer";
-    public static final String VERSION = "1.1";
+    public static final String VERSION = "1.2";
     public static boolean verbose = false;
 
     // Replacement for System.out that doesn't do anything. This is replaced by System.out if verbose is true.
@@ -42,7 +42,7 @@ public class EnchantmentRevealer
         @Override public void write(byte[] unused1, int unused2, int unused3) {}
     });
 
-    private final Events events = new Events();
+    private Events events;
     private boolean enableCommand = false;
 
     @EventHandler
@@ -61,6 +61,13 @@ public class EnchantmentRevealer
                 "If true, the /xpseed command will be enabled, allowing you to retrieve "
                 + "and set players' enchantment seeds directly.");
         enableCommand = prop.getBoolean();
+        prop = config.get(Configuration.CATEGORY_CLIENT, "useSeedHint", "sometimes",
+                "How to handle seed \"hint\" values from the server. On a vanilla server, these provide "
+                + "useful information that greatly speeds up the deduction process, but other servers "
+                + "may send garbage data instead. Setting this to \"always\" says to always trust the "
+                + "server provided value, while \"never\" means to ignore it. The default is \"sometimes\", "
+                + "which means try to use the seed, but recalculate as if \"never\" if it doesn't work.");
+        events = new Events(prop.getString());
 
         if (config.hasChanged()) {
             config.save();
