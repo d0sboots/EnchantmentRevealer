@@ -51,7 +51,7 @@ public class ContainerEnchantmentWrapper extends ContainerEnchantment {
     @Override
     public boolean enchantItem(EntityPlayer playerIn, int id) {
         boolean val = super.enchantItem(playerIn, id);
-        if (val) {
+        if (val && lastObservation != null) {
             Observation observation = new Observation();
             System.arraycopy(lastObservation.levels, 0, observation.levels, 0, 3);
             observation.truncatedSeed = (short) id;
