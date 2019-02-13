@@ -80,6 +80,10 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
         super.drawGuiContainerBackgroundLayer(partialTicks, mouseX, mouseY);
         mc.standardGalacticFontRenderer = saved;
 
+        if (lastState.observation != ((ContainerEnchantmentWrapper) inventorySlots).lastObservation) {
+            return; // Out-of-sync, happens when the GUI is closed with an item still present
+        }
+
         if (clippedRenderer == null) {
             clippedRenderer = new ClippedFontRenderer(mc.fontRendererObj);
         }
@@ -201,13 +205,8 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
     protected void drawGuiContainerForegroundLayer(int mouseX, int mouseY)
     {
         String message = EnchantmentWorker.DEFAULT_STATUS;
-        Observation lastObservation =
-                ((ContainerEnchantmentWrapper) inventorySlots).lastObservation;
-        if (lastState.observation == lastObservation) {
+        if (lastState != null) {
             message = lastState.statusMessage;
-        } else if (lastObservation != null && lastObservation.item != null
-                && lastObservation.item.isItemEnchantable()) {
-            message = "Calculating...";
         }
         fontRendererObj.drawString(message, 8, 4, 0x404040);
         fontRendererObj.drawString(inventory.getDisplayName().getUnformattedText(),
@@ -220,7 +219,8 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
         // before it is rendered and tweak it to suit us.
         Observation lastObservation =
                 ((ContainerEnchantmentWrapper) inventorySlots).lastObservation;
-        if (lastObservation != lastState.observation) {
+        if (lastObservation != lastState.observation ||
+                lastState.enchants == EnchantmentWorker.NO_STRINGS) {
             // We don't have a new result yet, pass through.
             super.drawHoveringText(textLines, x, y);
             return;
