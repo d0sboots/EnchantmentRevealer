@@ -26,6 +26,9 @@ import java.util.Random;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiNewChat;
 import net.minecraft.client.resources.I18n;
@@ -34,6 +37,8 @@ import net.minecraft.enchantment.EnchantmentData;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.WeightedRandom;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.text.Style;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraft.util.text.TextComponentTranslation;
@@ -111,9 +116,9 @@ public class EnchantmentWorker implements Runnable {
 
     // A psuedo-ArrayList (we grow and shrink it ourselves) that tracks the possible seed
     // candidates. This is not an actual ArrayList because unboxing. (Even though it probably
-    // doesn't matter.)
-    private int[] candidates = new int[INITIAL_SIZE];
-    private int candidatesLength = 0;
+    // doesn't matter.) Visible for testing.
+    int[] candidates = new int[INITIAL_SIZE];
+    int candidatesLength = 0;
 
     @SuppressWarnings("unchecked")
     final ArrayList<EnchantCount>[] enchantCounts = new ArrayList[3];
@@ -254,6 +259,15 @@ public class EnchantmentWorker implements Runnable {
         Thread[] threads = new Thread[THREAD_POOL_SIZE];
         final int batch[] = new int[1];  // Loop counter passed as one-element array
 
+        ItemStack item = observation.item;
+        final boolean isBook = item.getItem() == Items.BOOK || item.getItem() == Items.ENCHANTED_BOOK;
+        final List<List<EnchantmentData>> cachedEnchantmentList = buildEnchantListCache(item);
+        final Enchantment[] targets = new Enchantment[3];
+        for (int i = 0; i < 3; ++i) {
+            targets[i] = Enchantment.getEnchantmentByID(observation.enchants[i]);
+        }
+        final int enchantability = item.getItem().getItemEnchantability(item);
+
         for (int j = 0; j < THREAD_POOL_SIZE; ++j) {
             threads[j] = new Thread("EnchantmentWorker-doInitialFull-" + j) {
                 @Override public void run() {
@@ -301,12 +315,20 @@ public class EnchantmentWorker implements Runnable {
 
                         // The inner loop: Everything else can be slow, but this must be fast.
                         for (; i != localLimit; i++) {
-                            if (testLevelsFast(rng, i, observation)
-                                    && testEnchants(rng, i, observation, seen.get(seenLength).tempData)) {
-                                seen.get(seenLength).seed = i;
-                                seenLength++;
-                                if (seenLength >= seen.size()) {
-                                    seen.add(new Observed());
+                            if (testLevelsFast(rng, i, observation)) {
+                                Observed observed = seen.get(seenLength);
+                                List<EnchantmentData>[] tempData = observed.tempData;
+                                if (testEnchantFast(rng, i, observation, isBook, cachedEnchantmentList,
+                                        tempData, targets[2], enchantability, 2)
+                                        && testEnchantFast(rng, i, observation, isBook, cachedEnchantmentList,
+                                                tempData, targets[1], enchantability, 1)
+                                        && testEnchantFast(rng, i, observation, isBook, cachedEnchantmentList,
+                                                tempData, targets[0], enchantability, 0)) {
+                                    observed.seed = i;
+                                    seenLength++;
+                                    if (seenLength >= seen.size()) {
+                                        seen.add(new Observed());
+                                    }
                                 }
                             }
                         }
@@ -400,7 +422,7 @@ public class EnchantmentWorker implements Runnable {
         return level == levels[2];
     }
 
-    private static boolean testEnchants(Random rand, int seed, Observation observation,
+    static boolean testEnchants(Random rand, int seed, Observation observation,
             List<EnchantmentData>[] tempEnchantmentData) {
         for (int i = 0; i < 3; ++i) {
             int level = observation.levels[i];
@@ -411,18 +433,63 @@ public class EnchantmentWorker implements Runnable {
             }
             List<EnchantmentData> list = buildEnchantmentList(rand, seed, observation, i);
             tempEnchantmentData[i] = list;
-            if (!list.isEmpty()) {
-                EnchantmentData data = list.get(rand.nextInt(list.size()));
-                if (Enchantment.getEnchantmentByID(observation.enchants[i]) != data.enchantmentobj ||
-                        observation.enchantLevels[i] != data.enchantmentLevel) {
-                    return false;
-                }
-            } else {
+            if (list.isEmpty()) {
                 // Real enchant has something for this slot, but we found nothing.
+                return false;
+            }
+            EnchantmentData data = list.get(rand.nextInt(list.size()));
+            if (Enchantment.getEnchantmentByID(observation.enchants[i]) != data.enchantmentobj ||
+                    observation.enchantLevels[i] != data.enchantmentLevel) {
                 return false;
             }
         }
         return true;
+    }
+
+    static boolean testEnchantFast(Random rand, int seed, Observation observation, boolean isBook,
+            List<List<EnchantmentData>> cachedEnchantList, List<EnchantmentData>[] tempEnchantmentData,
+            Enchantment target, int enchantability, int index) {
+        int level = observation.levels[index];
+        if (level == 0) {
+            tempEnchantmentData[index] = null;
+            return true; // Always matches
+        }
+        if (enchantability <= 0) {
+            return false; // There's supposed to be an effect, but we can never find one.
+        }
+        rand.setSeed(seed + index);
+
+        level = level + 1 + rand.nextInt(enchantability / 4 + 1) + rand.nextInt(enchantability / 4 + 1);
+        float f = (rand.nextFloat() + rand.nextFloat() - 1.0F) * 0.15F;
+        level = MathHelper.clamp(Math.round((float)level + (float)level * f), 1, Integer.MAX_VALUE);
+        List<EnchantmentData> cacheList = cachedEnchantList.get(level);
+        List<EnchantmentData> list = new ArrayList<EnchantmentData>(2);
+        if (!cacheList.isEmpty()) {
+            list.add(WeightedRandom.getRandomItem(rand, cacheList));
+
+            if (rand.nextInt(50) <= level) {
+                cacheList = new ArrayList<EnchantmentData>(cacheList);
+                do {
+                    EnchantmentHelper.removeIncompatible(cacheList, list.get(list.size() - 1));
+                    if (cacheList.isEmpty())
+                        break;
+                    list.add(WeightedRandom.getRandomItem(rand, cacheList));
+                    level /= 2;
+                } while (rand.nextInt(50) <= level);
+            }
+        }
+
+        if (isBook && list.size() > 1) {
+            list.remove(rand.nextInt(list.size()));
+        }
+        tempEnchantmentData[index] = list;
+        if (list.isEmpty()) {
+            // Real enchant has something for this slot, but we found nothing.
+            return false;
+        }
+        EnchantmentData data = list.get(rand.nextInt(list.size()));
+        return target == data.enchantmentobj &&
+                observation.enchantLevels[index] == data.enchantmentLevel;
     }
 
     private static List<EnchantmentData> buildEnchantmentList(
@@ -440,6 +507,20 @@ public class EnchantmentWorker implements Runnable {
             list.remove(rand.nextInt(list.size()));
         }
         return list;
+    }
+
+    static List<List<EnchantmentData>> buildEnchantListCache(ItemStack item) {
+        List<List<EnchantmentData>> result = Lists.newArrayListWithExpectedSize(100);
+        if (item.getItem() == Items.ENCHANTED_BOOK) {
+            item = new ItemStack(Items.BOOK);
+        }
+        for (int power = 0; power < 100; ++power) {
+            if (item.getItem().getItemEnchantability(item) <= 0) {
+                result.add(ImmutableList.<EnchantmentData>of());
+            }
+            result.add(EnchantmentHelper.getEnchantmentDatas(power, item, /*allowTreasure=*/false));
+        }
+        return result;
     }
 
     @GuardedBy("this")

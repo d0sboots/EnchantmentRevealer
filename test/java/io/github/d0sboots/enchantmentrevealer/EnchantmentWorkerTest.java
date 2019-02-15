@@ -17,21 +17,22 @@ package io.github.d0sboots.enchantmentrevealer;
 import static org.junit.Assert.*;
 
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Random;
 
-import org.junit.Before;
 import org.junit.Test;
 
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.resources.Locale;
+import net.minecraft.enchantment.Enchantment;
+import net.minecraft.enchantment.EnchantmentData;
 import net.minecraft.init.Bootstrap;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
 public class EnchantmentWorkerTest {
 
-    @Before
-    public void setupTestCase() {
+    static {
         Bootstrap.register();
         Locale locale = new Locale();
         try {
@@ -42,7 +43,7 @@ public class EnchantmentWorkerTest {
             throw new RuntimeException(e);
         }
     }
-    
+
     private static Observation getTestObservation() {
         Observation observation = new Observation();
         observation.truncatedSeed = 0x2340;
@@ -59,7 +60,7 @@ public class EnchantmentWorkerTest {
         observation.item = new ItemStack(Item.getByNameOrId("diamond_leggings"));
         return observation;
     }
-    
+
     @Test
     public void testTestLevels() {
         Random rand = new Random(0);
@@ -77,6 +78,30 @@ public class EnchantmentWorkerTest {
     }
 
     @Test
+    public void testTestEnchants() {
+        Random rand = new Random(0);
+        Observation observation = getTestObservation();
+        ItemStack item = observation.item;
+        List<List<EnchantmentData>> cachedEnchantmentList = EnchantmentWorker.buildEnchantListCache(item);
+        Enchantment[] targets = new Enchantment[3];
+        for (int i = 0; i < 3; ++i) {
+            targets[i] = Enchantment.getEnchantmentByID(observation.enchants[i]);
+        }
+        int enchantability = item.getItem().getItemEnchantability(item);
+        @SuppressWarnings("unchecked") List<EnchantmentData>[] tempData = new List[3];
+        int count = 0;
+        for (int i = 0; i < 100000; ++i) {
+            boolean expected = EnchantmentWorker.testEnchants(rand, i, observation, tempData);
+            boolean actual = EnchantmentWorker.testEnchantFast(rand, i, observation, false, cachedEnchantmentList, tempData, targets[2], enchantability, 2) && EnchantmentWorker.testEnchantFast(rand, i, observation, false, cachedEnchantmentList, tempData, targets[1], enchantability, 1) && EnchantmentWorker.testEnchantFast(rand, i, observation, false, cachedEnchantmentList, tempData, targets[0], enchantability, 0);
+            assertEquals(expected, actual);
+            if (expected) {
+                count++;
+            }
+        }
+        assertTrue(count >= 100);
+    }
+
+    @Test
     public void testFullRun() throws InterruptedException {
         Observation observation = getTestObservation();
         EnchantmentWorker worker = new EnchantmentWorker(/*useSeed=*/ "always");
@@ -88,6 +113,40 @@ public class EnchantmentWorkerTest {
             state = worker.state;
         }
         assertEquals("enchantmentrevealer.status.possibles", state.statusMessage);
-        assertEquals(12, state.counts[0][0]);
+        assertEquals(worker.candidatesLength, state.counts[0][0]);
+        assertEquals("Found the wrong number of candidates!", 12, state.counts[0][0]);
+        int i = 0;
+        while (i < worker.candidatesLength && worker.candidates[i] != 0x12347) {
+            ++i;
+        }
+        assertNotEquals("The correct seed was not among the candidates!", worker.candidatesLength, i);
+    }
+
+    // This test takes ~1 minute to run.
+    @Test
+    public void testFullFullRun() throws InterruptedException {
+        Observation observation = getTestObservation();
+        EnchantmentWorker worker = new EnchantmentWorker(/*useSeed=*/ "never");
+        worker.addObservation(observation);
+        // Wait for worker to finish
+        EnchantmentWorker.State state = worker.state;
+        while (state.enchants == EnchantmentWorker.NO_STRINGS) {
+            Thread.sleep(50);
+            state = worker.state;
+        }
+        assertEquals("enchantmentrevealer.status.possibles", state.statusMessage);
+        assertEquals(worker.candidatesLength, state.counts[0][0]);
+        assertEquals("Found the wrong number of candidates!", 38722, state.counts[0][0]);
+        int i = 0;
+        while (i < worker.candidatesLength && worker.candidates[i] != 0x12347) {
+            ++i;
+        }
+        assertNotEquals("The correct seed was not among the candidates!", worker.candidatesLength, i);
+        Random rand = new Random(0);
+        @SuppressWarnings("unchecked") List<EnchantmentData>[] tempEnchantmentData = new List[3];
+        for (i = 0; i < worker.candidatesLength; ++i) {
+            assertTrue("Failure at i=" + i,
+                    EnchantmentWorker.testEnchants(rand, worker.candidates[i], observation, tempEnchantmentData));
+        }
     }
 }

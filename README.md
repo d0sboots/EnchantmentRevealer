@@ -41,19 +41,15 @@ re-logging won't change it.
 ### V1.2 Feature: Working without a seed hint
 Normally, the server sends enough information in a single test-enchant to quickly rule out most possibilities. However, some
 custom Minecraft servers mask some of this information, which makes the mod's job much harder. You will know you are in this
-situation if, after seeming to narrow in on the seed, the text changes to "Calculating... 0%" and starts counting up very
+situation if, after seeming to narrow in on the seed, the text changes to "Calculating... 0%" and starts counting up
 slowly. This means the mod has detected that using the seed isn't working, so it's doing an exhaustive search of all possibilities,
 by replaying the objects you've already test-enchanted.
 
-If this happens, you can go do something else for a while - the process will takes several minutes (at minimum). Leaving the
+If this happens, you can go do something else for a while - the process will take a minute or two. Leaving the
 enchanting altar (or even destroying it) won't lose your progress, although logging out will. You may need to try a slightly
 wider variety of items to pinpoint an exact seed, although usually the combo of "book, pants, boots, helmet, chest, sword, bow"
 is enough. (Another possibility if this happens is that the mod has a bug, or the server is using different mechanics for
 enchanting than the client is aware of. You'll know the difference because after the long calculation, you'll get an error message.)
-
-If you are on a server that does this, doing your test enchanting with only 6-8 active bookshelves instead of the full 15 (see
-[Enchantment mechanics](https://minecraft.gamepedia.com/Tutorials/Enchantment_mechanics#Bookshelf_placement)) and using a book
-as the first test object will generally get through the initial number-crunch the fastest.
 
 ## How it works
 Internally, Minecraft uses a [pseudorandom number generator](https://en.wikipedia.org/wiki/Pseudorandom_number_generator) (RNG for short)
