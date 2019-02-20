@@ -27,17 +27,17 @@ public class EnchantCount implements Comparable<EnchantCount> {
     }
 
     public static int hashCode(EnchantmentData data) {
-        return data.enchantmentobj.hashCode() * 5 + data.enchantmentLevel;
+        return data.enchantment.hashCode() * 5 + data.enchantmentLevel;
     }
 
     public static boolean equals(EnchantmentData first, EnchantmentData second) {
         return first.enchantmentLevel == second.enchantmentLevel &&
-                first.enchantmentobj == second.enchantmentobj;
+                first.enchantment == second.enchantment;
     }
 
     public static String toString(EnchantmentData data) {
-        return "\"" + data.enchantmentobj.getTranslatedName(data.enchantmentLevel) +
-                "\" (0x" + Integer.toHexString(Enchantment.getEnchantmentID(data.enchantmentobj)) +
+        return "\"" + data.enchantment.getTranslatedName(data.enchantmentLevel) +
+                "\" (0x" + Integer.toHexString(Enchantment.getEnchantmentID(data.enchantment)) +
                 " " + data.enchantmentLevel + ")";
     }
 
@@ -61,8 +61,8 @@ public class EnchantCount implements Comparable<EnchantCount> {
         if (enchant.enchantmentLevel != other.enchant.enchantmentLevel) {
             return enchant.enchantmentLevel - other.enchant.enchantmentLevel;
         }
-        return Enchantment.getEnchantmentID(enchant.enchantmentobj)
-                - Enchantment.getEnchantmentID(other.enchant.enchantmentobj);
+        return Enchantment.getEnchantmentID(enchant.enchantment)
+                - Enchantment.getEnchantmentID(other.enchant.enchantment);
     }
 
     @Override

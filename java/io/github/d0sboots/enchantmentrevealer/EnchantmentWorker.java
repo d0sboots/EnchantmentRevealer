@@ -438,7 +438,7 @@ public class EnchantmentWorker implements Runnable {
                 return false;
             }
             EnchantmentData data = list.get(rand.nextInt(list.size()));
-            if (Enchantment.getEnchantmentByID(observation.enchants[i]) != data.enchantmentobj ||
+            if (Enchantment.getEnchantmentByID(observation.enchants[i]) != data.enchantment ||
                     observation.enchantLevels[i] != data.enchantmentLevel) {
                 return false;
             }
@@ -488,7 +488,7 @@ public class EnchantmentWorker implements Runnable {
             return false;
         }
         EnchantmentData data = list.get(rand.nextInt(list.size()));
-        return target == data.enchantmentobj &&
+        return target == data.enchantment &&
                 observation.enchantLevels[index] == data.enchantmentLevel;
     }
 
@@ -559,7 +559,7 @@ public class EnchantmentWorker implements Runnable {
         if (enchants.size() != list.size())
             return false;
         for (EnchantmentData data : list) {
-            if (enchants.get(data.enchantmentobj) != data.enchantmentLevel)
+            if (enchants.get(data.enchantment) != data.enchantmentLevel)
                 return false;
         }
         return true;
@@ -595,7 +595,7 @@ public class EnchantmentWorker implements Runnable {
             int[] countTarget = new int[list.size()];
             for (int j = 0; j < list.size(); ++j) {
                 EnchantCount item = list.get(j);
-                enchantTarget[j] = item.enchant.enchantmentobj.getTranslatedName(item.enchant.enchantmentLevel);
+                enchantTarget[j] = item.enchant.enchantment.getTranslatedName(item.enchant.enchantmentLevel);
                 countTarget[j] = item.count;
             }
             enchants[i] = enchantTarget;

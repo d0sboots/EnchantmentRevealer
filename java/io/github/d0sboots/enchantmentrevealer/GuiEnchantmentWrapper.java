@@ -85,7 +85,7 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
         }
 
         if (clippedRenderer == null) {
-            clippedRenderer = new ClippedFontRenderer(mc.fontRendererObj);
+            clippedRenderer = new ClippedFontRenderer(mc.fontRenderer);
         }
 
         int midX = (width - xSize) / 2;
@@ -208,13 +208,13 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
         if (lastState != null) {
             message = lastState.statusMessage;
         }
-        fontRendererObj.drawString(message, 8, 4, 0x404040);
-        fontRendererObj.drawString(inventory.getDisplayName().getUnformattedText(),
+        fontRenderer.drawString(message, 8, 4, 0x404040);
+        fontRenderer.drawString(inventory.getDisplayName().getUnformattedText(),
                 8, ySize - 96 + 2, 0x404040);
     }
 
     @Override
-    protected void drawHoveringText(List<String> textLines, int x, int y) {
+    public void drawHoveringText(List<String> textLines, int x, int y) {
         // Rather than overriding all of drawScreen, it's easier to grab the tooltip
         // before it is rendered and tweak it to suit us.
         Observation lastObservation =
