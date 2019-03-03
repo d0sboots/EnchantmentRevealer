@@ -27,12 +27,13 @@ import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 
 @Mod(modid = EnchantmentRevealer.MODID, version = EnchantmentRevealer.VERSION,
+        updateJSON="https://raw.githubusercontent.com/d0sboots/EnchantmentRevealer/master/update.json",
         canBeDeactivated=true, clientSideOnly=true)
 public class EnchantmentRevealer
 {
     public static final String MODID = "enchantment_revealer";
     public static final String NAME = "EnchantmentRevealer";
-    public static final String VERSION = "1.2";
+    public static final String VERSION = "1.2.1";
     public static boolean verbose = false;
 
     // Replacement for System.out that doesn't do anything. This is replaced by System.out if verbose is true.
