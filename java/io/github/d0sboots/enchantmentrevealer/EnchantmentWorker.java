@@ -434,7 +434,10 @@ public class EnchantmentWorker implements Runnable {
             List<EnchantmentData> list = buildEnchantmentList(rand, seed, observation, i);
             tempEnchantmentData[i] = list;
             if (list.isEmpty()) {
-                // Real enchant has something for this slot, but we found nothing.
+                if (observation.enchants[i] == -1) {
+                    // Nothing at the observed slot, so it matches.
+                    continue;
+                }
                 return false;
             }
             EnchantmentData data = list.get(rand.nextInt(list.size()));
@@ -455,7 +458,7 @@ public class EnchantmentWorker implements Runnable {
             return true; // Always matches
         }
         if (enchantability <= 0) {
-            return false; // There's supposed to be an effect, but we can never find one.
+            return observation.enchants[index] == -1;
         }
         rand.setSeed(seed + index);
 
@@ -484,8 +487,7 @@ public class EnchantmentWorker implements Runnable {
         }
         tempEnchantmentData[index] = list;
         if (list.isEmpty()) {
-            // Real enchant has something for this slot, but we found nothing.
-            return false;
+            return observation.enchants[index] == -1;
         }
         EnchantmentData data = list.get(rand.nextInt(list.size()));
         return target == data.enchantmentobj &&
