@@ -27,7 +27,7 @@ import net.minecraft.client.resources.Locale;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentData;
 import net.minecraft.init.Bootstrap;
-import net.minecraft.item.Item;
+import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
 public class EnchantmentWorkerTest {
@@ -44,6 +44,7 @@ public class EnchantmentWorkerTest {
         }
     }
 
+    // A generic test observation
     private static Observation getTestObservation() {
         Observation observation = new Observation();
         observation.truncatedSeed = 0x2340;
@@ -57,7 +58,26 @@ public class EnchantmentWorkerTest {
         observation.enchantLevels[1] = 2;
         observation.enchants[2] = 1; // Fire Protection
         observation.enchantLevels[2] = 2;
-        observation.item = new ItemStack(Item.getByNameOrId("diamond_leggings"));
+        observation.item = new ItemStack(Items.diamond_leggings);
+        return observation;
+    }
+
+    // An observation at low power that has two empty slots, which has exposed bugs
+    // in the past.
+    private static Observation getWeakObservation() {
+        Observation observation = new Observation();
+        observation.truncatedSeed = 0x08e0;
+        observation.power = 0;
+        observation.levels[0] = 1;
+        observation.levels[1] = 3;
+        observation.levels[2] = 4;
+        observation.enchants[0] = -1;
+        observation.enchantLevels[0] = 0;
+        observation.enchants[1] = -1;
+        observation.enchantLevels[1] = 0;
+        observation.enchants[2] = 0x22; // Unbreaking
+        observation.enchantLevels[2] = 1;
+        observation.item = new ItemStack(Items.fishing_rod);
         return observation;
     }
 
@@ -77,34 +97,12 @@ public class EnchantmentWorkerTest {
         assertTrue(count >= 10000);
     }
 
-    @Test
-    public void testTestEnchants() {
-        Random rand = new Random(0);
-        Observation observation = getTestObservation();
-        ItemStack item = observation.item;
-        List<List<EnchantmentData>> cachedEnchantmentList = EnchantmentWorker.buildEnchantListCache(item);
+    private static EnchantmentWorker runWorkerLoop(Observation observation, String useSeed, int expectedCandidates) throws InterruptedException {
         Enchantment[] targets = new Enchantment[3];
         for (int i = 0; i < 3; ++i) {
             targets[i] = Enchantment.getEnchantmentByID(observation.enchants[i]);
         }
-        int enchantability = item.getItem().getItemEnchantability(item);
-        @SuppressWarnings("unchecked") List<EnchantmentData>[] tempData = new List[3];
-        int count = 0;
-        for (int i = 0; i < 100000; ++i) {
-            boolean expected = EnchantmentWorker.testEnchants(rand, i, observation, tempData);
-            boolean actual = EnchantmentWorker.testEnchantFast(rand, i, observation, false, cachedEnchantmentList, tempData, targets[2], enchantability, 2) && EnchantmentWorker.testEnchantFast(rand, i, observation, false, cachedEnchantmentList, tempData, targets[1], enchantability, 1) && EnchantmentWorker.testEnchantFast(rand, i, observation, false, cachedEnchantmentList, tempData, targets[0], enchantability, 0);
-            assertEquals(expected, actual);
-            if (expected) {
-                count++;
-            }
-        }
-        assertTrue(count >= 100);
-    }
-
-    @Test
-    public void testFullRun() throws InterruptedException {
-        Observation observation = getTestObservation();
-        EnchantmentWorker worker = new EnchantmentWorker(/*useSeed=*/ "always");
+        EnchantmentWorker worker = new EnchantmentWorker(useSeed);
         worker.addObservation(observation);
         // Wait for worker to finish
         EnchantmentWorker.State state = worker.state;
@@ -113,32 +111,53 @@ public class EnchantmentWorkerTest {
             state = worker.state;
         }
         assertEquals("enchantmentrevealer.status.possibles", state.statusMessage);
-        assertEquals(worker.candidatesLength, state.counts[0][0]);
-        assertEquals("Found the wrong number of candidates!", 12, state.counts[0][0]);
+        assertEquals(worker.candidatesLength, state.counts[2][0]);
+        assertEquals("Found the wrong number of candidates!", expectedCandidates, state.counts[2][0]);
+        return worker;
+    }
+
+    private static void runFastWorkerTest(Observation observation, int seed, int expectedCandidates)
+            throws InterruptedException {
+        EnchantmentWorker worker = runWorkerLoop(observation, "always", expectedCandidates);
         int i = 0;
-        while (i < worker.candidatesLength && worker.candidates[i] != 0x12347) {
+        while (i < worker.candidatesLength && worker.candidates[i] != seed) {
             ++i;
         }
         assertNotEquals("The correct seed was not among the candidates!", worker.candidatesLength, i);
+        Random rand = new Random(0);
+        ItemStack item = observation.item;
+        List<List<EnchantmentData>> cachedEnchantmentList = EnchantmentWorker.buildEnchantListCache(item);
+        Enchantment[] targets = new Enchantment[3];
+        for (i = 0; i < 3; ++i) {
+            targets[i] = Enchantment.getEnchantmentByID(observation.enchants[i]);
+        }
+        @SuppressWarnings("unchecked") List<EnchantmentData>[] tempEnchantmentData = new List[3];
+        int enchantability = item.getItem().getItemEnchantability(item);
+        for (i = 0; i < worker.candidatesLength; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                assertTrue("Failure for " + j + " at i=" + i,
+                        EnchantmentWorker.testEnchantFast(rand, worker.candidates[i], observation, false,
+                                cachedEnchantmentList, tempEnchantmentData, targets[j], enchantability, j));
+            }
+        }
     }
 
-    // This test takes ~1 minute to run.
     @Test
-    public void testFullFullRun() throws InterruptedException {
-        Observation observation = getTestObservation();
-        EnchantmentWorker worker = new EnchantmentWorker(/*useSeed=*/ "never");
-        worker.addObservation(observation);
-        // Wait for worker to finish
-        EnchantmentWorker.State state = worker.state;
-        while (state.enchants == EnchantmentWorker.NO_STRINGS) {
-            Thread.sleep(50);
-            state = worker.state;
-        }
-        assertEquals("enchantmentrevealer.status.possibles", state.statusMessage);
-        assertEquals(worker.candidatesLength, state.counts[0][0]);
-        assertEquals("Found the wrong number of candidates!", 38722, state.counts[0][0]);
+    public void testFastFullRun() throws InterruptedException {
+        runFastWorkerTest(getTestObservation(), 0x12347, 12);
+    }
+
+    @Test
+    public void testFastWeakRun() throws InterruptedException {
+        runFastWorkerTest(getWeakObservation(), 0x249e08e4, 18202);
+    }
+
+    // These tests take >1 minute to run.
+    private static void runSlowWorkerTest(Observation observation, int seed, int expectedCandidates)
+            throws InterruptedException {
+        EnchantmentWorker worker = runWorkerLoop(observation, "never", expectedCandidates);
         int i = 0;
-        while (i < worker.candidatesLength && worker.candidates[i] != 0x12347) {
+        while (i < worker.candidatesLength && worker.candidates[i] != seed) {
             ++i;
         }
         assertNotEquals("The correct seed was not among the candidates!", worker.candidatesLength, i);
@@ -146,7 +165,18 @@ public class EnchantmentWorkerTest {
         @SuppressWarnings("unchecked") List<EnchantmentData>[] tempEnchantmentData = new List[3];
         for (i = 0; i < worker.candidatesLength; ++i) {
             assertTrue("Failure at i=" + i,
-                    EnchantmentWorker.testEnchants(rand, worker.candidates[i], observation, tempEnchantmentData));
+                    EnchantmentWorker.testEnchants(
+                            rand, worker.candidates[i], observation, tempEnchantmentData));
         }
+    }
+
+    @Test
+    public void testSlowFullRun() throws InterruptedException {
+        runSlowWorkerTest(getTestObservation(), 0x12347, 38722);
+    }
+
+    @Test
+    public void testSlowWeakRun() throws InterruptedException {
+        runSlowWorkerTest(getWeakObservation(), 0x249e08e4, 75093865);
     }
 }
