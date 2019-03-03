@@ -1,62 +1,62 @@
 {
     "1.12.2": {
-        "v1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.12.2-2768"
+        "1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.12.2-2768"
     },
     "1.12.1": {
-        "v1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.12.1-2478"
+        "1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.12.1-2478"
     },
     "1.12": {
-        "v1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.12-2387"
+        "1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.12-2387"
     },
     "1.11.2": {
-        "v1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.11.2-2386",
-        "v1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.11.2-2228"
+        "1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.11.2-2386",
+        "1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.11.2-2228"
     },
     "1.11": {
-        "v1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.11-2189",
-        "v1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.11-2189"
+        "1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.11-2189",
+        "1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.11-2189"
     },
     "1.10.2": {
-        "v1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.10.2-2185",
-        "v1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.10.2-2185"
+        "1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.10.2-2185",
+        "1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.10.2-2185"
     },
     "1.10": {
-        "v1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.10-2000",
-        "v1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.10-2000"
+        "1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.10-2000",
+        "1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.10-2000"
     },
     "1.9.4": {
-        "v1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.9.4-1976",
-        "v1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.9.4-1976"
+        "1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.9.4-1976",
+        "1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.9.4-1976"
     },
     "1.9": {
-        "v1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.9-1887",
-        "v1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.9-1887"
+        "1.2": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.2-1.9-1887",
+        "1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.9-1887"
     },
     "1.8.9": {
-        "v1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.8.9-1902",
-        "v1.0": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.0-1.8.9-1722"
+        "1.1": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.1-1.8.9-1902",
+        "1.0": "See https://github.com/d0sboots/EnchantmentRevealer/releases/tag/v1.0-1.8.9-1722"
     },
     "homepage": "https://github.com/d0sboots/EnchantmentRevealer",
     "promos": {
-        "1.12.2-latest": "v1.2",
-        "1.12.2-recommended": "v1.2",
-        "1.12.1-latest": "v1.2",
-        "1.12.1-recommended": "v1.2",
-        "1.12-latest": "v1.2",
-        "1.12-recommended": "v1.2",
-        "1.11.2-latest": "v1.2",
-        "1.11.2-recommended": "v1.2",
-        "1.11-latest": "v1.2",
-        "1.11-recommended": "v1.2",
-        "1.10.2-latest": "v1.2",
-        "1.10.2-recommended": "v1.2",
-        "1.10-latest": "v1.2",
-        "1.10-recommended": "v1.2",
-        "1.9.4-latest": "v1.2",
-        "1.9.4-recommended": "v1.2",
-        "1.9-latest": "v1.2",
-        "1.9-recommended": "v1.2",
-        "1.8.9-latest": "v1.1",
-        "1.8.9-recommended": "v1.1"
+        "1.12.2-latest": "1.2",
+        "1.12.2-recommended": "1.2",
+        "1.12.1-latest": "1.2",
+        "1.12.1-recommended": "1.2",
+        "1.12-latest": "1.2",
+        "1.12-recommended": "1.2",
+        "1.11.2-latest": "1.2",
+        "1.11.2-recommended": "1.2",
+        "1.11-latest": "1.2",
+        "1.11-recommended": "1.2",
+        "1.10.2-latest": "1.2",
+        "1.10.2-recommended": "1.2",
+        "1.10-latest": "1.2",
+        "1.10-recommended": "1.2",
+        "1.9.4-latest": "1.2",
+        "1.9.4-recommended": "1.2",
+        "1.9-latest": "1.2",
+        "1.9-recommended": "1.2",
+        "1.8.9-latest": "1.1",
+        "1.8.9-recommended": "1.1"
     }
 }
