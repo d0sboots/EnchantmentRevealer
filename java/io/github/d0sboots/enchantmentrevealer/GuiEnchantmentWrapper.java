@@ -17,6 +17,8 @@ package io.github.d0sboots.enchantmentrevealer;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.lwjgl.opengl.GL11;
+
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiEnchantment;
 import net.minecraft.client.resources.I18n;
@@ -36,7 +38,6 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
     private static final FontRenderer dummyFontRenderer = new DummyFontRenderer();
     private static final long SCROLL_PERIOD_MS = 5000;
     private static final long SCROLL_PAUSE_MS = 1000;
-    private static ClippedFontRenderer clippedRenderer = null;
 
     private final EnchantmentWorker worker;
     private final InventoryPlayer inventory;
@@ -83,17 +84,19 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
         if (lastState.observation != ((ContainerEnchantmentWrapper) inventorySlots).lastObservation) {
             return; // Out-of-sync, happens when the GUI is closed with an item still present
         }
+        FontRenderer renderer = mc.fontRenderer;
 
-        if (clippedRenderer == null) {
-            clippedRenderer = new ClippedFontRenderer(mc.fontRenderer);
-        }
-
+        // Use the scissor test to clip scrolling/oversize text to within the GUI. We have to
+        // rescale to get screen coordinates from GUI (scaled) coordinates.
         int midX = (width - xSize) / 2;
         int midY = (height - ySize) / 2;
         final int leftBound = 78;
         final int rightBound = 166;
-        clippedRenderer.clipMinX = midX + leftBound;
-        clippedRenderer.clipMaxX = midX + rightBound;
+        int clipMinX = (midX + leftBound) * mc.displayWidth / width;
+        int scissorWidth = (rightBound - leftBound) * mc.displayWidth / width;
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
+        GL11.glScissor(clipMinX, 0, scissorWidth, mc.displayHeight);
+
         float scrollFraction = getScrollFraction();
         for (int i = 0; i < 3; ++i) {
             String[] enchants = lastState.enchants[i];
@@ -102,10 +105,10 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
             }
 
             String ench = enchants[0];
-            int stringWidth = clippedRenderer.getStringWidth(ench);
+            int stringWidth = renderer.getStringWidth(ench);
             float adjust = (stringWidth <= rightBound - leftBound ? 0.5F : scrollFraction)
                     * (rightBound - leftBound - stringWidth);
-            clippedRenderer.drawString(ench, midX + leftBound + adjust,
+            renderer.drawString(ench, midX + leftBound + adjust,
                     midY + 15 + 19 * i, 0x222222, false);
 
             int[] enchantCounts = lastState.counts[i];
@@ -125,9 +128,10 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
                 int total = (int) (((acc * 200L + 1) / enchantCounts[0]) >>> 1);
                 plusX = String.format("%d.%02d", total / 100, total % 100);
             }
-            clippedRenderer.drawString(I18n.format("enchantmentrevealer.text.plusx", plusX),
+            renderer.drawString(I18n.format("enchantmentrevealer.text.plusx", plusX),
                     midX + leftBound + 2, midY + 24 + 19 * i, 0x222222);
         }
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
     }
 
     private float getScrollFraction() {
