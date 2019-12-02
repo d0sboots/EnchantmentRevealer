@@ -33,7 +33,7 @@ public class EnchantmentRevealer
 {
     public static final String MODID = "enchantment_revealer";
     public static final String NAME = "EnchantmentRevealer";
-    public static final String VERSION = "1.2.1";
+    public static final String VERSION = "1.3";
     public static boolean verbose = false;
 
     // Replacement for System.out that doesn't do anything. This is replaced by System.out if verbose is true.
