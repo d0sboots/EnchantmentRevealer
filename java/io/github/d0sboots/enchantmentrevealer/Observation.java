@@ -26,6 +26,7 @@ import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.registry.IRegistry;
 
 /**
  * Represents a single set of observed information gleaned from the vanilla enchanting process.
@@ -65,6 +66,12 @@ public class Observation {
      * enchanting result which will reset EnchantmentWorker to its default state.
      */
     public static final int RESET_POWER = -1;
+
+    /** They took this function away, but we still need it. This is a convenient central place. */
+    @SuppressWarnings("deprecation")
+    static int getEnchantmentID(Enchantment enchantment) {
+        return IRegistry.field_212628_q.getId(enchantment);
+    }
 
     public boolean hasEnchants() {
         return item != null && levels[0] != 0;
@@ -127,7 +134,8 @@ public class Observation {
                 builder.append("-1, ");
             } else {
                 builder.append('"');
-                builder.append(Enchantment.getEnchantmentByID(entry).getTranslatedName(level));
+                Enchantment enchant = Enchantment.getEnchantmentByID(entry);
+                builder.append(enchant == null ? "unknown" : enchant.func_200305_d(level).getString());
                 builder.append("\" (0x");
                 builder.append(Integer.toHexString(entry));
                 builder.append(" ");
@@ -153,7 +161,7 @@ public class Observation {
             int[] enchantLevel = new int[enchantMap.size()];
             int i = 0;
             for (Entry<Enchantment, Integer> entry : enchantMap.entrySet()) {
-                enchantList[i] = Enchantment.getEnchantmentID(entry.getKey());
+                enchantList[i] = getEnchantmentID(entry.getKey());
                 enchantLevel[i] = entry.getValue();
                 i++;
             }

@@ -14,7 +14,6 @@
 
 package io.github.d0sboots.enchantmentrevealer;
 
-import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentData;
 
 public class EnchantCount implements Comparable<EnchantCount> {
@@ -36,8 +35,8 @@ public class EnchantCount implements Comparable<EnchantCount> {
     }
 
     public static String toString(EnchantmentData data) {
-        return "\"" + data.enchantment.getTranslatedName(data.enchantmentLevel) +
-                "\" (0x" + Integer.toHexString(Enchantment.getEnchantmentID(data.enchantment)) +
+        return "\"" + data.enchantment.func_200305_d(data.enchantmentLevel).getString() +
+                "\" (0x" + Integer.toHexString(Observation.getEnchantmentID(data.enchantment)) +
                 " " + data.enchantmentLevel + ")";
     }
 
@@ -61,8 +60,8 @@ public class EnchantCount implements Comparable<EnchantCount> {
         if (enchant.enchantmentLevel != other.enchant.enchantmentLevel) {
             return enchant.enchantmentLevel - other.enchant.enchantmentLevel;
         }
-        return Enchantment.getEnchantmentID(enchant.enchantment)
-                - Enchantment.getEnchantmentID(other.enchant.enchantment);
+        return Observation.getEnchantmentID(enchant.enchantment)
+                - Observation.getEnchantmentID(other.enchant.enchantment);
     }
 
     @Override

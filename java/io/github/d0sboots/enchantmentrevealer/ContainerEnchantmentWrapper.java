@@ -24,7 +24,6 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
-import net.minecraftforge.common.ForgeHooks;
 
 import com.google.common.base.Preconditions;
 
@@ -121,26 +120,28 @@ public class ContainerEnchantmentWrapper extends ContainerEnchantment {
         }
     }
 
-    void setPower(Observation observation) {
-        int power = 0;
-        for (int j = -1; j <= 1; ++j)
-        {
-            for (int k = -1; k <= 1; ++k)
-            {
-                if ((j != 0 || k != 0) && world.isAirBlock(position.add(k, 0, j)) && world.isAirBlock(position.add(k, 1, j)))
-                {
-                    power += ForgeHooks.getEnchantPower(world, position.add(k * 2, 0, j * 2));
-                    power += ForgeHooks.getEnchantPower(world, position.add(k * 2, 1, j * 2));
+    private float getPower(BlockPos pos) {
+        return world.getBlockState(pos).getEnchantPowerBonus(world, pos);
+    }
+
+    private void setPower(Observation observation) {
+        float power = 0;
+        for (int j = -1; j <= 1; ++j) {
+            for (int k = -1; k <= 1; ++k) {
+                if ((j != 0 || k != 0) && world.isAirBlock(position.add(k, 0, j))
+                        && world.isAirBlock(position.add(k, 1, j))) {
+                    power += getPower(position.add(k * 2, 0, j * 2));
+                    power += getPower(position.add(k * 2, 1, j * 2));
                     if (k != 0 && j != 0)
                     {
-                        power += ForgeHooks.getEnchantPower(world, position.add(k * 2, 0, j));
-                        power += ForgeHooks.getEnchantPower(world, position.add(k * 2, 1, j));
-                        power += ForgeHooks.getEnchantPower(world, position.add(k, 0, j * 2));
-                        power += ForgeHooks.getEnchantPower(world, position.add(k, 1, j * 2));
+                        power += getPower(position.add(k * 2, 0, j));
+                        power += getPower(position.add(k * 2, 1, j));
+                        power += getPower(position.add(k, 0, j * 2));
+                        power += getPower(position.add(k, 1, j * 2));
                     }
                 }
             }
         }
-        observation.power = power;
+        observation.power = (int) power;
     }
 }

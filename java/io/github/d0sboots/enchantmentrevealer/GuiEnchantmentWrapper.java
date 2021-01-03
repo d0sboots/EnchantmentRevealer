@@ -16,14 +16,18 @@ package io.github.d0sboots.enchantmentrevealer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.lwjgl.opengl.GL11;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiEnchantment;
+import net.minecraft.client.gui.fonts.FontResourceManager;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.ContainerEnchantment;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
@@ -35,6 +39,10 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
             FieldHelper.from(World.class, ContainerEnchantment.class);
     private static final FieldHelper<ContainerEnchantment, GuiEnchantment> containerField =
             FieldHelper.from(ContainerEnchantment.class, GuiEnchantment.class);
+    @SuppressWarnings("unchecked")
+    private static final FieldHelper<Map<ResourceLocation, FontRenderer>, FontResourceManager> mapField =
+            FieldHelper.from((Class<Map<ResourceLocation, FontRenderer>>) (Class<?>) Map.class,
+                    FontResourceManager.class);
     private static final FontRenderer dummyFontRenderer = new DummyFontRenderer();
     private static final long SCROLL_PERIOD_MS = 5000;
     private static final long SCROLL_PAUSE_MS = 1000;
@@ -76,10 +84,11 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
     protected void drawGuiContainerBackgroundLayer(float partialTicks, int mouseX, int mouseY) {
         // We don't want the gibberish text to render, but we want the rest of the standard GUI
         // stuff, so we replace the renderer before delegating and then put it back after.
-        FontRenderer saved = mc.standardGalacticFontRenderer;
-        mc.standardGalacticFontRenderer = dummyFontRenderer;
+        FontRenderer saved = mc.getFontResourceManager().getFontRenderer(Minecraft.standardGalacticFontRenderer);
+        Map<ResourceLocation, FontRenderer> renderers = mapField.get(mc.getFontResourceManager());
+        renderers.put(Minecraft.standardGalacticFontRenderer, dummyFontRenderer);
         super.drawGuiContainerBackgroundLayer(partialTicks, mouseX, mouseY);
-        mc.standardGalacticFontRenderer = saved;
+        renderers.put(Minecraft.standardGalacticFontRenderer, saved);
 
         if (lastState.observation != ((ContainerEnchantmentWrapper) inventorySlots).lastObservation) {
             return; // Out-of-sync, happens when the GUI is closed with an item still present
@@ -92,10 +101,10 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
         int midY = (height - ySize) / 2;
         final int leftBound = 78;
         final int rightBound = 166;
-        int clipMinX = (midX + leftBound) * mc.displayWidth / width;
-        int scissorWidth = (rightBound - leftBound) * mc.displayWidth / width;
+        int clipMinX = (midX + leftBound) * mc.mainWindow.getWidth() / width;
+        int scissorWidth = (rightBound - leftBound) * mc.mainWindow.getWidth() / width;
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
-        GL11.glScissor(clipMinX, 0, scissorWidth, mc.displayHeight);
+        GL11.glScissor(clipMinX, 0, scissorWidth, mc.mainWindow.getHeight());
 
         float scrollFraction = getScrollFraction();
         for (int i = 0; i < 3; ++i) {
@@ -108,8 +117,7 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
             int stringWidth = renderer.getStringWidth(ench);
             float adjust = (stringWidth <= rightBound - leftBound ? 0.5F : scrollFraction)
                     * (rightBound - leftBound - stringWidth);
-            renderer.drawString(ench, midX + leftBound + adjust,
-                    midY + 15 + 19 * i, 0x222222, false);
+            renderer.drawString(ench, midX + leftBound + adjust, midY + 15 + 19 * i, 0x222222);
 
             int[] enchantCounts = lastState.counts[i];
             int ecLen = enchantCounts.length;
@@ -151,14 +159,14 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
     }
 
     @Override
-    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+    public void render(int mouseX, int mouseY, float partialTicks) {
         EnchantmentWorker.State newState = worker.state;
         if (newState != lastState) {
             lastState = newState;
             calculateTooltipText();
             scrollBaseMs = System.currentTimeMillis();
         }
-        super.drawScreen(mouseX, mouseY, partialTicks);
+        super.render(mouseX, mouseY, partialTicks);
     }
 
     private void calculateTooltipText() {
@@ -181,7 +189,8 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
                 builder.append(enchants[j]);
                 builder.append(TextFormatting.RESET);
                 String styled = builder.toString();
-                String which = EnchantmentRevealer.verbose ? "verbose" : "normal";
+                String which = EnchantmentRevealer.CONFIG.verboseDebug.get()
+                        ? "verbose" : "normal";
                 if (hidePercent) {
                     text.add(I18n.format("enchantmentrevealer.tooltip." + which,
                             styled, counts[j]));
@@ -212,9 +221,9 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
         if (lastState != null) {
             message = lastState.statusMessage;
         }
-        fontRenderer.drawString(message, 8, 4, 0x404040);
-        fontRenderer.drawString(inventory.getDisplayName().getUnformattedText(),
-                8, ySize - 96 + 2, 0x404040);
+        fontRenderer.drawString(message, 8f, 4f, 0x404040);
+        fontRenderer.drawString(inventory.getDisplayName().getFormattedText(),
+                8f, ySize - 96 + 2, 0x404040);
     }
 
     @Override

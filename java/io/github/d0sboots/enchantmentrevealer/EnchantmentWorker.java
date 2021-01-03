@@ -130,13 +130,8 @@ public class EnchantmentWorker implements Runnable {
     @SuppressWarnings("unchecked")
     private final List<EnchantmentData>[] tempEnchantmentData = new ArrayList[3];
     private final ArrayList<Observation> observations = new ArrayList<Observation>();
-    private final String useSeedHint;
     // Are we re-doing the calculations assuming bad seed data?
     private boolean didFallback = false;
-
-    public EnchantmentWorker(String useSeedHint) {
-        this.useSeedHint = useSeedHint;
-    }
 
     @Override
     public void run() {
@@ -184,6 +179,7 @@ public class EnchantmentWorker implements Runnable {
                 observations.add(observation);
                 return;
             }
+            String useSeedHint = EnchantmentRevealer.CONFIG.useSeedHint.get();
             if (candidatesLength == 0) {
                 if (didFallback || useSeedHint.equalsIgnoreCase("never")) {
                     doInitialFull(observation);
@@ -597,7 +593,7 @@ public class EnchantmentWorker implements Runnable {
             int[] countTarget = new int[list.size()];
             for (int j = 0; j < list.size(); ++j) {
                 EnchantCount item = list.get(j);
-                enchantTarget[j] = item.enchant.enchantment.getTranslatedName(item.enchant.enchantmentLevel);
+                enchantTarget[j] = item.enchant.enchantment.func_200305_d(item.enchant.enchantmentLevel).getString();
                 countTarget[j] = item.count;
             }
             enchants[i] = enchantTarget;
@@ -628,7 +624,7 @@ public class EnchantmentWorker implements Runnable {
         state = new State(TextFormatting.RED
                 + I18n.format("enchantmentrevealer.error.mainmessage"), NO_STRINGS, NO_INTS,
                 observations.get(observations.size() - 1));
-        GuiNewChat chat = Minecraft.getMinecraft().ingameGUI.getChatGUI();
+        GuiNewChat chat = Minecraft.getInstance().ingameGUI.getChatGUI();
         chat.printChatMessage(new TextComponentTranslation("enchantmentrevealer.error.part1",
                 new TextComponentTranslation("enchantmentrevealer.error." + tag), "d0sboots",
                 "gmai", "l.com").setStyle(new Style().setColor(TextFormatting.RED)

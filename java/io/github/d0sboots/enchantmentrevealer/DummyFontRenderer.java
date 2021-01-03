@@ -14,43 +14,19 @@
 
 package io.github.d0sboots.enchantmentrevealer;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.resources.IResource;
-import net.minecraft.client.resources.data.IMetadataSection;
-import net.minecraft.util.ResourceLocation;
 
 /**
  * Stub that doesn't render anything.
  *
  * Only overrides what I need it to.
  */
-final class DummyFontRenderer extends FontRenderer {
-    private static final class DummyIResource implements IResource {
-        @Override public void close() { }
-        @Override public ResourceLocation getResourceLocation() { return null; }
-        @Override public InputStream getInputStream() { return new ByteArrayInputStream(new byte[0]); }
-        @Override public boolean hasMetadata() { return false; }
-        @Override public <T extends IMetadataSection> T getMetadata(String sectionName) { return null; }
-        @Override public String getResourcePackName() { return ""; }
-    }
-    private static final DummyIResource DUMMY_RESOURCE = new DummyIResource();
-
+public class DummyFontRenderer extends FontRenderer {
     DummyFontRenderer() {
-        super(Minecraft.getMinecraft().gameSettings, null, null, false);
+        super(null, null);
     }
 
     @Override
-    protected void bindTexture(ResourceLocation location) {}
-
-    @Override
-    protected IResource getResource(ResourceLocation location) {
-        return DUMMY_RESOURCE;
+    public void drawSplitString(String str, int x, int y, int wrapWidth, int textColor) {
     }
-
-    @Override
-    public void drawSplitString(String str, int x, int y, int wrapWidth, int textColor) {}
 }

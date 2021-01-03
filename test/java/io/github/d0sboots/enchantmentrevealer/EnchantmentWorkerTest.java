@@ -16,11 +16,16 @@ package io.github.d0sboots.enchantmentrevealer;
 
 import static org.junit.Assert.*;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Random;
 
 import org.junit.Test;
+
+import com.electronwill.nightconfig.core.AbstractCommentedConfig;
+import com.electronwill.nightconfig.core.ConfigFormat;
+import com.electronwill.nightconfig.core.InMemoryFormat;
 
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.resources.Locale;
@@ -29,10 +34,20 @@ import net.minecraft.enchantment.EnchantmentData;
 import net.minecraft.init.Bootstrap;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraftforge.fml.loading.FMLLoader;
 
 public class EnchantmentWorkerTest {
-
     static {
+        try {
+            Field field = FMLLoader.class.getDeclaredField("mcVersion");
+            field.setAccessible(true);
+            field.set(FMLLoader.class, "Test version");
+            field = FMLLoader.class.getDeclaredField("forgeVersion");
+            field.setAccessible(true);
+            field.set(FMLLoader.class, "Test version");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         Bootstrap.register();
         Locale locale = new Locale();
         try {
@@ -52,7 +67,7 @@ public class EnchantmentWorkerTest {
         observation.levels[0] = 4;
         observation.levels[1] = 11;
         observation.levels[2] = 14;
-        observation.enchants[0] = 0x22; // Unbreaking
+        observation.enchants[0] = 0x14; // Unbreaking
         observation.enchantLevels[0] = 1;
         observation.enchants[1] = 0; // Protection
         observation.enchantLevels[1] = 2;
@@ -75,10 +90,35 @@ public class EnchantmentWorkerTest {
         observation.enchantLevels[0] = 0;
         observation.enchants[1] = -1;
         observation.enchantLevels[1] = 0;
-        observation.enchants[2] = 0x22; // Unbreaking
+        observation.enchants[2] = 0x14; // Unbreaking
         observation.enchantLevels[2] = 1;
         observation.item = new ItemStack(Items.FISHING_ROD);
         return observation;
+    }
+
+    private static class SimpleCommentedConfig extends AbstractCommentedConfig {
+        public SimpleCommentedConfig() {
+            super(/*concurrent=*/false);
+        }
+
+        public SimpleCommentedConfig(AbstractCommentedConfig config) {
+            super(config, /*concurrent=*/false);
+        }
+
+        @Override
+        public ConfigFormat<?> configFormat() {
+            return InMemoryFormat.withUniversalSupport();
+        }
+
+        @Override
+        public SimpleCommentedConfig createSubConfig() {
+            return new SimpleCommentedConfig();
+        }
+
+        @Override
+        public AbstractCommentedConfig clone() {
+            return new SimpleCommentedConfig(this);
+        }
     }
 
     @Test
@@ -102,7 +142,10 @@ public class EnchantmentWorkerTest {
         for (int i = 0; i < 3; ++i) {
             targets[i] = Enchantment.getEnchantmentByID(observation.enchants[i]);
         }
-        EnchantmentWorker worker = new EnchantmentWorker(useSeed);
+        EnchantmentWorker worker = new EnchantmentWorker();
+        SimpleCommentedConfig config = new SimpleCommentedConfig();
+        EnchantmentRevealer.configSpec.setConfig(config);
+        config.set("client.useSeedHint", useSeed);
         worker.addObservation(observation);
         // Wait for worker to finish
         EnchantmentWorker.State state = worker.state;
