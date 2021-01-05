@@ -115,6 +115,9 @@ public class EnchantmentWorker implements Runnable {
     @GuardedBy("this")
     private Observation pendingEnchant;
 
+    // This is accessed from the main (UI) thread only.
+    private boolean disabled;
+
     // The following are only accessed from the worker thread, or when the worker thread is
     // guaranteed to be stopped.
 
@@ -136,6 +139,26 @@ public class EnchantmentWorker implements Runnable {
     private final ArrayList<Observation> observations = new ArrayList<Observation>();
     // Are we re-doing the calculations assuming bad seed data?
     private boolean didFallback = false;
+
+    public boolean isDisabled() { return disabled; }
+
+    public void setDisabled(boolean value) {
+        LOGGER.info("setDisabled: {}", value);
+        disabled = value;
+        if (value) {
+            // Reset our state.
+            synchronized (this) {
+                queue.clear(); // Get rid of any pending work.
+                Observation clearObservation = new Observation();
+                // This is the slot, so it needs to be in 0-2.
+                clearObservation.truncatedSeed = 0;
+                clearObservation.power = Observation.RESET_POWER;
+                // This item will always pass the consistency check.
+                clearObservation.item = ItemStack.EMPTY;
+                addObservation(clearObservation);
+            }
+        }
+    }
 
     @Override
     public void run() {

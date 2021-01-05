@@ -27,6 +27,7 @@ import net.minecraft.client.gui.fonts.FontResourceManager;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.ContainerEnchantment;
+import net.minecraft.util.INameable;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextFormatting;
@@ -43,25 +44,32 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
     private static final FieldHelper<Map<ResourceLocation, FontRenderer>, FontResourceManager> mapField =
             FieldHelper.from((Class<Map<ResourceLocation, FontRenderer>>) (Class<?>) Map.class,
                     FontResourceManager.class);
+    private static final FieldHelper<INameable, GuiEnchantment> nameableField =
+            FieldHelper.from(INameable.class, GuiEnchantment.class);
     private static final FontRenderer dummyFontRenderer = new DummyFontRenderer();
     private static final long SCROLL_PERIOD_MS = 5000;
     private static final long SCROLL_PAUSE_MS = 1000;
+    // These two are in pixels
+    private static final int TITLE_OFFSET_X = 8;
+    private static final int TITLE_OFFSET_Y = 4;
 
     private final EnchantmentWorker worker;
     private final InventoryPlayer inventory;
+    private final INameable nameableShadow;
     private EnchantmentWorker.State lastState;
     private long scrollBaseMs = System.currentTimeMillis();
     @SuppressWarnings("unchecked")
     private final ArrayList<String>[] tooltipText = new ArrayList[3];
 
     public GuiEnchantmentWrapper(
-            InventoryPlayer inventory, World worldIn, EnchantmentWorker worker, BlockPos pos) {
-        super(inventory, worldIn, inventory);
+            InventoryPlayer inventory, World worldIn, EnchantmentWorker worker, BlockPos pos, INameable nameable) {
+        super(inventory, worldIn, nameable);
         try {
             ContainerEnchantment containerWrapper =
                     new ContainerEnchantmentWrapper(inventory, worldIn, worker, pos);
             inventorySlots = containerWrapper;
             containerField.set(this, containerWrapper);
+            nameableShadow = nameable;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -77,11 +85,15 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
 
         return new GuiEnchantmentWrapper(
                 inventoryField.get(base),
-                worldField.get(containerField.get(base)), worker, pos);
+                worldField.get(containerField.get(base)), worker, pos, nameableField.get(base));
     }
 
     @Override
     protected void drawGuiContainerBackgroundLayer(float partialTicks, int mouseX, int mouseY) {
+        if (worker.isDisabled()) {
+            super.drawGuiContainerBackgroundLayer(partialTicks, mouseX, mouseY);
+            return;
+        }
         // We don't want the gibberish text to render, but we want the rest of the standard GUI
         // stuff, so we replace the renderer before delegating and then put it back after.
         FontRenderer saved = mc.getFontResourceManager().getFontRenderer(Minecraft.standardGalacticFontRenderer);
@@ -122,7 +134,7 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
             int[] enchantCounts = lastState.counts[i];
             int ecLen = enchantCounts.length;
             if (ecLen == 1) {
-                continue;  // Don't do "+0 more"
+                continue; // Don't do "+0 more"
             }
 
             final String plusX;
@@ -161,7 +173,7 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
     @Override
     public void render(int mouseX, int mouseY, float partialTicks) {
         EnchantmentWorker.State newState = worker.state;
-        if (newState != lastState) {
+        if (!worker.isDisabled() && newState != lastState) {
             lastState = newState;
             calculateTooltipText();
             scrollBaseMs = System.currentTimeMillis();
@@ -190,7 +202,8 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
                 builder.append(TextFormatting.RESET);
                 String styled = builder.toString();
                 String which = EnchantmentRevealer.CONFIG.verboseDebug.get()
-                        ? "verbose" : "normal";
+                        ? "verbose"
+                        : "normal";
                 if (hidePercent) {
                     text.add(I18n.format("enchantmentrevealer.tooltip." + which,
                             styled, counts[j]));
@@ -215,19 +228,36 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
     }
 
     @Override
-    protected void drawGuiContainerForegroundLayer(int mouseX, int mouseY)
-    {
+    protected void drawGuiContainerForegroundLayer(int mouseX, int mouseY) {
         String message = EnchantmentWorker.DEFAULT_STATUS;
-        if (lastState != null) {
+        if (isPointInRegion(TITLE_OFFSET_X, TITLE_OFFSET_Y, 160, 9, mouseX, mouseY)) {
+            message = I18n.format(
+                    worker.isDisabled() ? "enchantmentrevealer.status.enable" : "enchantmentrevealer.status.disable");
+        } else if (worker.isDisabled()) {
+            message = nameableShadow.getDisplayName().getFormattedText();
+        } else if (lastState != null) {
             message = lastState.statusMessage;
         }
-        fontRenderer.drawString(message, 8f, 4f, 0x404040);
+        fontRenderer.drawString(message, TITLE_OFFSET_X, TITLE_OFFSET_Y, 0x404040);
         fontRenderer.drawString(inventory.getDisplayName().getFormattedText(),
                 8f, ySize - 96 + 2, 0x404040);
     }
 
     @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int mouseButton) {
+        if (isPointInRegion(TITLE_OFFSET_X, TITLE_OFFSET_Y, 160, 9, mouseX, mouseY)) {
+            worker.setDisabled(!worker.isDisabled());
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, mouseButton);
+    }
+
+    @Override
     public void drawHoveringText(List<String> textLines, int x, int y) {
+        if (worker.isDisabled()) {
+            super.drawHoveringText(textLines, x, y);
+            return;
+        }
         // Rather than overriding all of drawScreen, it's easier to grab the tooltip
         // before it is rendered and tweak it to suit us.
         Observation lastObservation =
@@ -239,7 +269,7 @@ public class GuiEnchantmentWrapper extends GuiEnchantment {
             return;
         }
         for (int i = 0; i < 3; ++i) {
-            if (this.isPointInRegion(60, 14 + 19 * i, 108, 17, x, y)) {
+            if (isPointInRegion(60, 14 + 19 * i, 108, 17, x, y)) {
                 ArrayList<String> newLines = tooltipText[i];
                 int originalSize = newLines.size();
                 if (!textLines.isEmpty()) {
