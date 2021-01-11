@@ -14,8 +14,7 @@
 
 package io.github.d0sboots.enchantmentrevealer;
 
-import java.io.OutputStream;
-import java.io.PrintStream;
+import org.apache.logging.log4j.LogManager;
 
 import io.github.d0sboots.enchantmentrevealer.CommandXpSeed.HexArgumentType;
 import net.minecraft.command.arguments.ArgumentSerializer;
@@ -40,14 +39,6 @@ public class EnchantmentRevealer
 {
     public static final String MODID = "enchantment_revealer";
     public static final String VERSION = "1.3";
-    public static boolean verbose = false;
-
-    // Replacement for System.out that doesn't do anything. This is replaced by System.out if verbose is true.
-    public static PrintStream out = new PrintStream(new OutputStream() {
-        @Override public void write(int unused) {}
-        @Override public void write(byte[] unused) {}
-        @Override public void write(byte[] unused1, int unused2, int unused3) {}
-    });
 
     /**
      * We lump all our configuration into a single config file of type COMMON.
@@ -100,15 +91,11 @@ public class EnchantmentRevealer
         // separate classes.
         FMLJavaModLoadingContext.get().getModEventBus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
-        EnchantmentRevealer.out.println("EnchantmentRevealer initialized.");
+        LogManager.getLogger().info("EnchantmentRevealer initialized.");
     }
 
     @SubscribeEvent
     public void onSetup(FMLCommonSetupEvent unused) {
-        // This is not thread-safe, but this is only a temporary solution.
-        if (CONFIG.verboseDebug.get()) {
-            out = System.out;
-        }
         if (EnchantmentRevealer.CONFIG.enableCommand.get()) {
             ArgumentTypes.register(new ResourceLocation("enchantmentrevealer:hex_argument_type"),
                     HexArgumentType.class, new ArgumentSerializer<>(HexArgumentType::integer));
