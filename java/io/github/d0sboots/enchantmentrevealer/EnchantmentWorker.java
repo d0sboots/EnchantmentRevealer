@@ -26,6 +26,9 @@ import java.util.Random;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
@@ -91,6 +94,7 @@ public class EnchantmentWorker implements Runnable {
         }
     }
 
+    private static final Logger LOGGER = LogManager.getLogger();
     public static final String DEFAULT_STATUS = I18n.format("enchantmentrevealer.version",
             EnchantmentRevealer.VERSION);
     // Default size of the psuedo-ArrayList "candidates".
@@ -140,7 +144,7 @@ public class EnchantmentWorker implements Runnable {
 
     @Override
     public void run() {
-        EnchantmentRevealer.out.println("Worker " + this + " starting");
+        LOGGER.trace("Worker {} starting", this);
         try {
             mainLoop();
         } catch (RuntimeException e) {
@@ -148,7 +152,7 @@ public class EnchantmentWorker implements Runnable {
             thread = null;
             throw e;
         } finally {
-            EnchantmentRevealer.out.println("Worker " + this + " exiting");
+            LOGGER.trace("Worker {} exiting", this);
         }
     }
 
@@ -161,7 +165,7 @@ public class EnchantmentWorker implements Runnable {
             }
 
             Observation observation = observations.get(observations.size() - 1);
-            EnchantmentRevealer.out.println("Working observation " + observation);
+            LOGGER.info("Working observation {}", observation);
             if (!observation.hasEnchants()) {
                 // Keep the message around, but update the observation
                 state = new State(state.statusMessage, NO_STRINGS, NO_INTS, observation);
@@ -202,6 +206,7 @@ public class EnchantmentWorker implements Runnable {
                     return;
                 }
 
+                LOGGER.info("Exhausted all possibilities, trying again while ignoring xpSeed");
                 didFallback = true;
                 // Put all the observations back on the queue, so we re-process them.
                 synchronized (this) {

@@ -16,6 +16,9 @@ package io.github.d0sboots.enchantmentrevealer;
 
 import java.util.ArrayDeque;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.ContainerEnchantment;
@@ -29,6 +32,7 @@ import net.minecraftforge.common.ForgeHooks;
 import com.google.common.base.Preconditions;
 
 public class ContainerEnchantmentWrapper extends ContainerEnchantment {
+    private static final Logger LOGGER = LogManager.getLogger();
     private static final long SYNC_DELAY_MS = 100;
 
     private final EnchantmentWorker worker;
@@ -71,7 +75,7 @@ public class ContainerEnchantmentWrapper extends ContainerEnchantment {
         if (ItemStack.areItemStacksEqual(stack, lastStack)) {
             return;
         }
-        EnchantmentRevealer.out.println("onCraftMatrixChanged " + stack);
+        LOGGER.debug("onCraftMatrixChanged {}", stack);
         lastStack = stack == null ? null : stack.copy();
         if (lastStack != null && lastStack.hasEffect()) {
             worker.reportEnchantFinished(lastStack);
@@ -101,15 +105,15 @@ public class ContainerEnchantmentWrapper extends ContainerEnchantment {
             if (!newSeedObservation.equals(lastSeedObservation)) {
                 lastSeedObservation = newSeedObservation;
                 newSeedObservation = new Observation();
-                EnchantmentRevealer.out.println("New seed observation " + lastSeedObservation);
+                LOGGER.debug("New seed observation {}", lastSeedObservation);
 
                 if (itemObservation == null) {
-                    EnchantmentRevealer.out.println("Nothing to match new observation to!");
+                    LOGGER.debug("Nothing to match new observation to!");
                     return;
                 }
             } else if (itemObservation != null
                     && itemObservation.now + SYNC_DELAY_MS < System.currentTimeMillis()) {
-                EnchantmentRevealer.out.println("Time's up waiting for " + lastSeedObservation);
+                LOGGER.debug("Time's up waiting for {}", lastSeedObservation);
             } else {
                 // We haven't reached the fallback time yet, so wait for a change.
                 return;
