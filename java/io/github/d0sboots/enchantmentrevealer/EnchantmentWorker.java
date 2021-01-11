@@ -183,11 +183,17 @@ public class EnchantmentWorker implements Runnable {
             }
 
             Observation observation = observations.get(observations.size() - 1);
-            LOGGER.info("Working observation {}", observation);
+            LOGGER.debug("Working observation {}", observation);
             if (!observation.hasEnchants()) {
                 // Keep the message around, but update the observation
                 state = new State(state.statusMessage, NO_STRINGS, NO_INTS, observation);
                 continue;
+            }
+            if (!observation.isUnenchantable()
+                    && (observation.item == null || observation.item.getItem().getItemEnchantability() == 0)) {
+                dumpError("unenchantable");
+                // Don't re-process anything.
+                return;
             }
             for (int i = 0; i < 3; ++i) {
                 enchantCounts[i].clear();

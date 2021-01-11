@@ -32,6 +32,7 @@ public class EnchantmentRevealer {
     public static final String NAME = "EnchantmentRevealer";
     public static final String VERSION = "1.3";
     public static boolean verbose = false;
+    public static int syncTicksMax;
 
     private Events events;
     private boolean enableCommand = false;
@@ -54,7 +55,15 @@ public class EnchantmentRevealer {
                         + "may send garbage data instead. Setting this to \"always\" says to always trust the "
                         + "server provided value, while \"never\" means to ignore it. The default is \"sometimes\", "
                         + "which means try to use the seed, but recalculate as if \"never\" if it doesn't work.");
-        events = new Events(prop.getString());
+        String useSeedHint = prop.getString();
+        prop = config.get(Configuration.CATEGORY_CLIENT, "syncTicksMax", 15,
+                "The maximum number of game ticks to wait for between an item being placed in the GUI "
+                        + "and receiving the response from the server. You can increase this value if it seems like "
+                        + "sometimes items are \"skipped\" without anything happenning, but going too large (multiple "
+                        + "seconds, i.e. over 40) can introduce other issues in certain edge cases if you shuffle "
+                        + "items fast enough.");
+        syncTicksMax = prop.getInt();
+        events = new Events(useSeedHint);
 
         if (config.hasChanged()) {
             config.save();

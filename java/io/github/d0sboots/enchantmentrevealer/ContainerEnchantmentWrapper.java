@@ -33,7 +33,6 @@ import net.minecraftforge.common.ForgeHooks;
 
 public class ContainerEnchantmentWrapper extends ContainerEnchantment {
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final long SYNC_DELAY_MS = 100;
 
     private final EnchantmentWorker worker;
     private final World world;
@@ -43,6 +42,7 @@ public class ContainerEnchantmentWrapper extends ContainerEnchantment {
     private Observation newSeedObservation = new Observation();
     private Observation lastSeedObservation;
     public Observation lastObservation;
+    private long tick = 0;
 
     public ContainerEnchantmentWrapper(
             InventoryPlayer playerInv, World worldIn, EnchantmentWorker worker, BlockPos pos) {
@@ -86,8 +86,14 @@ public class ContainerEnchantmentWrapper extends ContainerEnchantment {
         Observation newObservation = new Observation();
         newObservation.now = System.currentTimeMillis();
         newObservation.item = lastStack;
+        newObservation.tick = tick;
         setPower(newObservation);
         observations.add(newObservation);
+    }
+
+    private static boolean isEnchantableObservation(Observation itemObservation) {
+        return itemObservation.item != null && itemObservation.item.isItemEnchantable()
+                && !itemObservation.item.isEmpty();
     }
 
     @Override
@@ -98,6 +104,7 @@ public class ContainerEnchantmentWrapper extends ContainerEnchantment {
         // data from the server is inherently racy. We combat this by paying attention to changes
         // in the data, with a fallback based on time.
         if (!worker.isDisabled() && id == 9) {
+            tick++;
             System.arraycopy(enchantClue, 0, newSeedObservation.enchants, 0, 3);
             System.arraycopy(worldClue, 0, newSeedObservation.enchantLevels, 0, 3);
             System.arraycopy(enchantLevels, 0, newSeedObservation.levels, 0, 3);
@@ -107,15 +114,31 @@ public class ContainerEnchantmentWrapper extends ContainerEnchantment {
             if (!newSeedObservation.equals(lastSeedObservation)) {
                 lastSeedObservation = newSeedObservation;
                 newSeedObservation = new Observation();
-                LOGGER.debug("New seed observation {}", lastSeedObservation);
 
                 if (itemObservation == null) {
-                    LOGGER.debug("Nothing to match new observation to!");
+                    LOGGER.info("Nothing to match new seed observation {} to!", lastSeedObservation);
                     return;
+                } else {
+                    LOGGER.info("New seed observation {} matched to {} in {} ticks and {} msec", lastSeedObservation,
+                            itemObservation.item, tick - itemObservation.tick,
+                            System.currentTimeMillis() - itemObservation.now);
                 }
             } else if (itemObservation != null
-                    && itemObservation.now + SYNC_DELAY_MS < System.currentTimeMillis()) {
-                LOGGER.debug("Time's up waiting for {}", lastSeedObservation);
+                    && tick >= itemObservation.tick + EnchantmentRevealer.syncTicksMax) {
+                if (newSeedObservation.isUnenchantable() || isEnchantableObservation(itemObservation)) {
+                    LOGGER.info("Too many ticks waiting for {} ({} msec), using {}", lastSeedObservation,
+                            System.currentTimeMillis() - itemObservation.now, itemObservation.item);
+                } else {
+                    // Keep waiting if we've got an enchantment seed with an unenchantable item - that will never work
+                    // out, and probably indicates lag.
+                    if ((tick - itemObservation.tick) % EnchantmentRevealer.syncTicksMax == 0) {
+                        // Only log periodically, including the first time.
+                        LOGGER.info("Still waiting for {} ({} msec, {} ticks) because item is {}", lastSeedObservation,
+                                System.currentTimeMillis() - itemObservation.now, tick - itemObservation.tick,
+                                itemObservation.item);
+                    }
+                    return;
+                }
             } else {
                 // We haven't reached the fallback time yet, so wait for a change.
                 return;
