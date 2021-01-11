@@ -35,21 +35,20 @@ import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
 @Mod(EnchantmentRevealer.MODID)
-public class EnchantmentRevealer
-{
+public class EnchantmentRevealer {
     public static final String MODID = "enchantment_revealer";
     public static final String VERSION = "1.3";
 
     /**
-     * We lump all our configuration into a single config file of type COMMON.
-     * This is because it's too much of a pain to deal with multiple files, and the
-     * single server command we're defining is for debugging, so it shouldn't be
-     * per-server anyway, but global.
+     * We lump all our configuration into a single config file of type COMMON. This is because it's too
+     * much of a pain to deal with multiple files, and the single server command we're defining is for
+     * debugging, so it shouldn't be per-server anyway, but global.
      */
     public static class Config {
         public final BooleanValue verboseDebug;
         public final ConfigValue<String> useSeedHint;
         public final BooleanValue enableCommand;
+        public final ConfigValue<Integer> syncTicksMax;
 
         Config(ForgeConfigSpec.Builder builder) {
             builder.comment("Client only settings").push("client");
@@ -63,6 +62,13 @@ public class EnchantmentRevealer
                     "the server provided value, while \"never\" means to ignore it. The default is \"sometimes\", ",
                     "which means try to use the seed, but recalculate as if \"never\" if it doesn't work.")
                     .define("useSeedHint", "sometimes");
+            syncTicksMax = builder.comment(
+                    "The maximum number of game ticks to wait for between an item being placed in the GUI ",
+                    "and receiving the response from the server. You can increase this value if it seems like ",
+                    "sometimes items are \"skipped\" without anything happenning, but going too large (multiple ",
+                    "seconds, i.e. over 40) can introduce other issues in certain edge cases if you shuffle ",
+                    "items fast enough.")
+                    .define("syncTicksMax", 15);
             builder.pop();
 
             builder.comment("Server-side configuration settings").push("server");
@@ -75,6 +81,7 @@ public class EnchantmentRevealer
             builder.pop();
         }
     }
+
     public static final Config CONFIG;
     static final ForgeConfigSpec configSpec;
     static {

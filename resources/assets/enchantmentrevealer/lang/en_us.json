@@ -11,6 +11,7 @@
 "enchantmentrevealer.error.part1": "%s Please report this to %s@%s%s, especially if the problem persists.",
 "enchantmentrevealer.error.part2": "Technical details follow (please copy this whole chunk from the Minecraft log when reporting):",
 "enchantmentrevealer.error.seedmismatch": "ERROR: Unexpected seed mismatch while processing.",
+"enchantmentrevealer.error.unenchantable": "ERROR: Tried to calculate enchantment for unenchantable item.",
 "enchantmentrevealer.status.disable": "Click to disable mod",
 "enchantmentrevealer.status.enable": "Click to enable mod",
 "enchantmentrevealer.status.possibles": "%d possibilities",

@@ -61,22 +61,21 @@ public class EnchantmentWorker implements Runnable {
         /** Message to be shown in the place where "Enchanting" normally shows up. */
         public final String statusMessage;
         /**
-         * First dimension is slot (3 entries), second dimension is the number of unique
-         * enchants for that slot. The string values are the pre-translated names, with power
-         * level. These are sorted so that the "observed" enchantment (the one that would be
-         * shown in the vanilla UI) is always first, and then in order of increasing rarity.
+         * First dimension is slot (3 entries), second dimension is the number of unique enchants for that
+         * slot. The string values are the pre-translated names, with power level. These are sorted so that
+         * the "observed" enchantment (the one that would be shown in the vanilla UI) is always first, and
+         * then in order of increasing rarity.
          */
         public final String[][] enchants;
         /**
-         * Sliced the same direction as "enchants", this has the number of times that
-         * enchantment is a valid possibility. Because of the sorting order, the first element
-         * (per slot) also serves as the denominator. If the field has been narrowed to a single
-         * seed, then all counts will be 1.
+         * Sliced the same direction as "enchants", this has the number of times that enchantment is a valid
+         * possibility. Because of the sorting order, the first element (per slot) also serves as the
+         * denominator. If the field has been narrowed to a single seed, then all counts will be 1.
          */
         public final int[][] counts;
         /**
-         * The observation this state applies to. If this doesn't match the current observation,
-         * then the state won't be displayed.
+         * The observation this state applies to. If this doesn't match the current observation, then the
+         * state won't be displayed.
          */
         @Nullable
         public final Observation observation;
@@ -89,9 +88,7 @@ public class EnchantmentWorker implements Runnable {
             this.observation = observation;
         }
 
-        public boolean isError() {
-            return statusMessage.startsWith(TextFormatting.RED.toString());
-        }
+        public boolean isError() { return statusMessage.startsWith(TextFormatting.RED.toString()); }
     }
 
     private static final Logger LOGGER = LogManager.getLogger();
@@ -183,11 +180,17 @@ public class EnchantmentWorker implements Runnable {
             }
 
             Observation observation = observations.get(observations.size() - 1);
-            LOGGER.info("Working observation {}", observation);
+            LOGGER.debug("Working observation {}", observation);
             if (!observation.hasEnchants()) {
                 // Keep the message around, but update the observation
                 state = new State(state.statusMessage, NO_STRINGS, NO_INTS, observation);
                 continue;
+            }
+            if (!observation.isUnenchantable()
+                    && (observation.item == null || observation.item.getItemEnchantability() == 0)) {
+                dumpError("unenchantable");
+                // Don't re-process anything.
+                return;
             }
             for (int i = 0; i < 3; ++i) {
                 enchantCounts[i].clear();
@@ -262,7 +265,7 @@ public class EnchantmentWorker implements Runnable {
         int initial = observation.truncatedSeed & 0xFFF0;
         int i = initial;
         do {
-            setPartialProgress(observation, Math.round((i & 0xFFFFFFFFL) * 0x64P-32));  // 100/2^32
+            setPartialProgress(observation, Math.round((i & 0xFFFFFFFFL) * 0x64P-32)); // 100/2^32
             int localLimit = i + (BATCH_SIZE << 12);
 
             for (; i != localLimit; i += (1 << 16)) {
@@ -281,7 +284,7 @@ public class EnchantmentWorker implements Runnable {
     private void doInitialFull(final Observation observation) {
         final int THREAD_POOL_SIZE = 4;
         Thread[] threads = new Thread[THREAD_POOL_SIZE];
-        final int batch[] = new int[1];  // Loop counter passed as one-element array
+        final int batch[] = new int[1]; // Loop counter passed as one-element array
 
         ItemStack item = observation.item;
         final boolean isBook = item.getItem() == Items.BOOK || item.getItem() == Items.ENCHANTED_BOOK;
@@ -294,7 +297,8 @@ public class EnchantmentWorker implements Runnable {
 
         for (int j = 0; j < THREAD_POOL_SIZE; ++j) {
             threads[j] = new Thread("EnchantmentWorker-doInitialFull-" + j) {
-                @Override public void run() {
+                @Override
+                public void run() {
                     class Observed {
                         public int seed;
                         @SuppressWarnings("unchecked")
@@ -304,7 +308,7 @@ public class EnchantmentWorker implements Runnable {
                                 tempData[i] = new ArrayList<EnchantmentData>();
                             }
                         }
-                    };
+                    }
 
                     // We never shrink seen, so that it holds on to all the Observed instances.
                     // So we track seenLength separately, and length() becomes capacity.
@@ -334,7 +338,7 @@ public class EnchantmentWorker implements Runnable {
                             if (localLimit == 0) {
                                 batch[0] = 1;
                             }
-                            setPartialProgress(observation, Math.round((i & 0xFFFFFFFFL) * 0x64P-32));  // 100/2^32
+                            setPartialProgress(observation, Math.round((i & 0xFFFFFFFFL) * 0x64P-32)); // 100/2^32
                         }
 
                         // The inner loop: Everything else can be slow, but this must be fast.
@@ -488,7 +492,7 @@ public class EnchantmentWorker implements Runnable {
 
         level = level + 1 + rand.nextInt(enchantability / 4 + 1) + rand.nextInt(enchantability / 4 + 1);
         float f = (rand.nextFloat() + rand.nextFloat() - 1.0F) * 0.15F;
-        level = MathHelper.clamp(Math.round((float)level + (float)level * f), 1, Integer.MAX_VALUE);
+        level = MathHelper.clamp(Math.round((float) level + (float) level * f), 1, Integer.MAX_VALUE);
         List<EnchantmentData> cacheList = cachedEnchantList.get(level);
         List<EnchantmentData> list = new ArrayList<EnchantmentData>(2);
         if (!cacheList.isEmpty()) {
@@ -655,8 +659,9 @@ public class EnchantmentWorker implements Runnable {
         GuiNewChat chat = Minecraft.getInstance().ingameGUI.getChatGUI();
         chat.printChatMessage(new TextComponentTranslation("enchantmentrevealer.error.part1",
                 new TextComponentTranslation("enchantmentrevealer.error." + tag), "d0sboots",
-                "gmai", "l.com").setStyle(new Style().setColor(TextFormatting.RED)
-                .setBold(true)));
+                "gmai", "l.com").setStyle(
+                        new Style().setColor(TextFormatting.RED)
+                                .setBold(true)));
         chat.printChatMessage(new TextComponentTranslation("enchantmentrevealer.error.part2")
                 .setStyle(new Style().setColor(TextFormatting.YELLOW)));
         for (Observation observation : observations) {
@@ -696,9 +701,7 @@ public class EnchantmentWorker implements Runnable {
         }
     }
 
-    public synchronized void reportEnchantBegin(Observation observation) {
-        pendingEnchant = observation;
-    }
+    public synchronized void reportEnchantBegin(Observation observation) { pendingEnchant = observation; }
 
     public synchronized void reportEnchantFinished(ItemStack stack) {
         if (pendingEnchant == null)
