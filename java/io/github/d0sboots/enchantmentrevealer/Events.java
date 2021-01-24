@@ -14,6 +14,7 @@
 
 package io.github.d0sboots.enchantmentrevealer;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiEnchantment;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.util.math.BlockPos;
@@ -37,14 +38,12 @@ public class Events {
     }
 
     @SubscribeEvent
-    public void onInteract(RightClickBlock event) {
-        lastInteractPos = event.getPos();
-    }
+    public void onInteract(RightClickBlock event) { lastInteractPos = event.getPos(); }
 
     @SubscribeEvent
     public void onWorldLoad(WorldEvent.Load event) {
         if (event.getWorld() instanceof WorldClient) {
-            worker = new EnchantmentWorker();
+            worker = new EnchantmentWorker(Minecraft.getInstance().ingameGUI.getChatGUI());
         }
     }
 }
