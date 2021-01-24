@@ -32,7 +32,6 @@ import org.apache.logging.log4j.Logger;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiNewChat;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.enchantment.Enchantment;
@@ -135,10 +134,15 @@ public class EnchantmentWorker implements Runnable {
     private final List<EnchantmentData>[] tempEnchantmentData = new ArrayList[3];
     private final ArrayList<Observation> observations = new ArrayList<Observation>();
     private final String useSeedHint;
+    // Used to report errors (only)
+    private final GuiNewChat guiChat;
     // Are we re-doing the calculations assuming bad seed data?
     private boolean didFallback = false;
 
-    public EnchantmentWorker(String useSeedHint) { this.useSeedHint = useSeedHint; }
+    public EnchantmentWorker(String useSeedHint, GuiNewChat chatGUI) {
+        this.useSeedHint = useSeedHint;
+        guiChat = chatGUI;
+    }
 
     public boolean isDisabled() { return disabled; }
 
@@ -658,14 +662,13 @@ public class EnchantmentWorker implements Runnable {
         state = new State(TextFormatting.RED
                 + I18n.format("enchantmentrevealer.error.mainmessage"), NO_STRINGS, NO_INTS,
                 observations.get(observations.size() - 1));
-        GuiNewChat chat = Minecraft.getMinecraft().ingameGUI.getChatGUI();
-        chat.printChatMessage(new TextComponentTranslation("enchantmentrevealer.error.part1",
+        guiChat.printChatMessage(new TextComponentTranslation("enchantmentrevealer.error.part1",
                 new TextComponentTranslation("enchantmentrevealer.error." + tag), "d0sboots", "gmai", "l.com")
                         .setStyle(new Style().setColor(TextFormatting.RED).setBold(true)));
-        chat.printChatMessage(new TextComponentTranslation("enchantmentrevealer.error.part2")
+        guiChat.printChatMessage(new TextComponentTranslation("enchantmentrevealer.error.part2")
                 .setStyle(new Style().setColor(TextFormatting.YELLOW)));
         for (Observation observation : observations) {
-            chat.printChatMessage(new TextComponentString(observation.toString())
+            guiChat.printChatMessage(new TextComponentString(observation.toString())
                     .setStyle(new Style().setColor(TextFormatting.YELLOW)));
         }
         observations.clear();
