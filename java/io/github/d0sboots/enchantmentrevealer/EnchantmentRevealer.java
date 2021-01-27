@@ -30,7 +30,7 @@ import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 public class EnchantmentRevealer {
     public static final String MODID = "enchantment_revealer";
     public static final String NAME = "EnchantmentRevealer";
-    public static final String VERSION = "1.3";
+    public static final String VERSION = "1.4";
     public static boolean verbose = false;
     public static int syncTicksMax;
 
